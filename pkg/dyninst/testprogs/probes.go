@@ -96,3 +96,42 @@ func HasIssueTag(p ir.ProbeDefinition) bool {
 	_, ok := GetIssueTag(p)
 	return ok
 }
+
+// SkipIntegrationConfigTagPrefix is the prefix for tags that mark a probe as
+// skipped for a specific testprogs Config in integration tests. The tag value
+// is the Config.String() representation (e.g. "arch=amd64,toolchain=go1.23.11").
+// A probe may carry multiple such tags to skip multiple configs.
+const SkipIntegrationConfigTagPrefix = "skip_integration_config:"
+
+// GetSkippedIntegrationConfigs returns the set of Config values for which the
+// given probe should be skipped in integration tests. Each
+// "skip_integration_config:<config>" tag contributes one entry.
+func GetSkippedIntegrationConfigs(p ir.ProbeDefinition) ([]Config, error) {
+	var cfgs []Config
+	for _, tag := range p.GetTags() {
+		if !strings.HasPrefix(tag, SkipIntegrationConfigTagPrefix) {
+			continue
+		}
+		cfg, err := parseConfig(tag[len(SkipIntegrationConfigTagPrefix):])
+		if err != nil {
+			return nil, fmt.Errorf("parse skip_integration_config tag %q on probe %s: %w", tag, p.GetID(), err)
+		}
+		cfgs = append(cfgs, cfg)
+	}
+	return cfgs, nil
+}
+
+// MustGetSkippedIntegrationConfigs calls GetSkippedIntegrationConfigs and
+// fails the test on error.
+func MustGetSkippedIntegrationConfigs(t testing.TB, p ir.ProbeDefinition) []Config {
+	cfgs, err := GetSkippedIntegrationConfigs(p)
+	require.NoError(t, err)
+	return cfgs
+}
+
+// IsIntegrationConfigSkipped returns true if the probe should be skipped for
+// the given Config.
+func IsIntegrationConfigSkipped(t testing.TB, p ir.ProbeDefinition, cfg Config) bool {
+	cfgs := MustGetSkippedIntegrationConfigs(t, p)
+	return slices.Contains(cfgs, cfg)
+}

@@ -339,6 +339,9 @@ func runIntegrationTestSuite(
 	for _, cfg := range cfgs {
 		probes := testprogs.MustGetProbeDefinitions(t, service)
 		probes = slices.DeleteFunc(probes, testprogs.HasIssueTag)
+		probes = slices.DeleteFunc(probes, func(p ir.ProbeDefinition) bool {
+			return testprogs.IsIntegrationConfigSkipped(t, p, cfg)
+		})
 		// Some probes have different output in different versions, due to
 		// compiler changes. We rename the probes to organize output into different files.
 		resultNames := make(map[string]string)
