@@ -95,7 +95,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 				case workloadmeta.EventTypeSet:
 					s.tracker.addedOrUpdated(pod)
 				case workloadmeta.EventTypeUnset:
-					s.tracker.removed(pod)
+					s.tracker.deleted(pod)
 				}
 			}
 			eventBundle.Acknowledge()
@@ -107,8 +107,8 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
-// ApplyRecommendations decides whether a pod should be scheduled on spot and updates it accordingly.
-func (s *Scheduler) ApplyRecommendations(pod *corev1.Pod) (bool, error) {
+// PodCreated decides whether a pod should be scheduled on spot and updates it accordingly.
+func (s *Scheduler) PodCreated(pod *corev1.Pod) (bool, error) {
 	if !s.isSpotEligible(pod) {
 		return false, nil
 	}
@@ -117,6 +117,8 @@ func (s *Scheduler) ApplyRecommendations(pod *corev1.Pod) (bool, error) {
 	if !ok {
 		return false, nil
 	}
+
+	log.Debugf("Pod created via webhook for owner %s", owner)
 
 	spotPercentage, minOnDemand := s.readConfig(pod)
 
@@ -130,17 +132,17 @@ func (s *Scheduler) ApplyRecommendations(pod *corev1.Pod) (bool, error) {
 
 		onDemand := total - spot
 		if onDemand < minOnDemand {
-			log.Debugf("Skipping pod for %s: on-demand minimum not met (%d < %d)", owner, onDemand, minOnDemand)
+			log.Debugf("Skipping pod for %s: on-demand minimum not met (%d < %d), total: %d, spot: %d", owner, onDemand, minOnDemand, total, spot)
 			return false
 		}
 
 		desiredSpot := (total + 1) * spotPercentage / 100
 		if spot >= desiredSpot {
-			log.Debugf("Skipping pod for %s: desired spot reached (%d >= %d)", owner, spot, desiredSpot)
+			log.Debugf("Skipping pod for %s: desired spot reached (%d >= %d), total: %d", owner, spot, desiredSpot, total)
 			return false
 		}
 
-		log.Debugf("Assigning pod for %s to spot (%d of desired %d spot, %d on-demand)", owner, spot, desiredSpot, onDemand)
+		log.Debugf("Assigning pod for %s to spot (%d of desired %d spot, %d on-demand), total: %d", owner, spot, desiredSpot, onDemand, total)
 		return true
 	})
 
@@ -149,6 +151,24 @@ func (s *Scheduler) ApplyRecommendations(pod *corev1.Pod) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// PodDeleted is called when a pod deletion is intercepted via admission webhook,
+// allowing immediate freeing of the spot/on-demand slot before workloadmeta propagates.
+func (s *Scheduler) PodDeleted(pod *corev1.Pod) {
+	if !s.isSpotEligible(pod) {
+		return
+	}
+
+	owner, ok := resolveCoreV1PodOwner(pod)
+	if !ok {
+		return
+	}
+	uid := string(pod.UID)
+
+	log.Debugf("Pod %s (phase=%s) removed via webhook for owner %s", uid, pod.Status.Phase, owner)
+
+	s.tracker.deletePod(owner, uid)
 }
 
 func (s *Scheduler) isSpotEligible(pod *corev1.Pod) bool {

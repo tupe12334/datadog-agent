@@ -3,12 +3,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-//go:build kubeapiserver
+//go:build kubeapiserver && test
 
 package spot_test
 
 import (
 	"context"
+	"math/rand/v2"
 	"strconv"
 	"testing"
 	"time"
@@ -42,7 +43,8 @@ func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clo
 	go scheduler.Run(t.Context())
 	<-scheduler.WaitSubscribed()
 
-	cluster.AddAdmissionHook(scheduler.ApplyRecommendations)
+	cluster.OnPodCreated(scheduler.PodCreated)
+	cluster.OnPodDeleted(scheduler.PodDeleted)
 
 	return scheduler, clk
 }
@@ -50,7 +52,8 @@ func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clo
 func updateDeployment(cluster *fakeCluster, namespace, name string, replicas int, annotations map[string]string, currentReplicaSet string) string {
 	// A new ReplicaSet created
 	newReplicaSet := replicaSetName(name)
-	for _, pod := range newPods(kubernetes.ReplicaSetKind, namespace, newReplicaSet, replicas, annotations) {
+	for range replicas {
+		pod := newPod(namespace, kubernetes.ReplicaSetKind, newReplicaSet, annotations)
 		cluster.CreatePod(pod)
 	}
 	// Old ReplicaSet is scaled down
@@ -222,6 +225,51 @@ func TestScenarios(t *testing.T) {
 		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs3, expectRunning("spot", 6))
 		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs3, expectRunning("on-demand", 4))
 	})
+
+	t.Run("Pod replacement preserves ratio", func(t *testing.T) {
+		// Given
+		cluster := newFakeCluster(t)
+		cluster.AddOnDemandNode("on-demand")
+		cluster.AddSpotNode("spot")
+
+		runTestScheduler(t, cluster)
+
+		const replicas = 10
+		const minOnDemand = 2
+		const spotPercentage = 60
+		const expectedSpot = 6
+		const expectedOnDemand = replicas - expectedSpot
+		annotations := spotAnnotations(spotPercentage, minOnDemand)
+
+		rs := updateDeployment(cluster, "default", "nginx", replicas, annotations, "")
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("spot", expectedSpot))
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", expectedOnDemand))
+
+		for range 10 {
+			// When
+			// Delete random pods between 1 and len(pods)-1 and
+			// create its replacement simulating the ReplicaSet controller.
+			pods := cluster.ListOwnerPods(kubernetes.ReplicaSetKind, "default", rs)
+			count := rand.N(len(pods)-1) + 1
+
+			deleted := make(map[string]struct{}, count)
+			for _, idx := range rand.Perm(len(pods))[:count] {
+				pod := pods[idx]
+
+				cluster.DeletePod(pod)
+				deleted[pod.ID] = struct{}{}
+
+				cluster.CreatePod(newPod("default", kubernetes.ReplicaSetKind, rs, annotations))
+			}
+
+			// Important: wait until deletion is complete before checking expectations to avoid counting deleted pods.
+			cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectHasNoneOf(deleted))
+
+			// Then
+			cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("spot", expectedSpot))
+			cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", expectedOnDemand))
+		}
+	})
 }
 
 func expectRunning(node string, count int) func([]*workloadmeta.KubernetesPod) bool {
@@ -245,5 +293,16 @@ func expectPending(count int) func([]*workloadmeta.KubernetesPod) bool {
 			}
 		}
 		return actual == count
+	}
+}
+
+func expectHasNoneOf(ids map[string]struct{}) func([]*workloadmeta.KubernetesPod) bool {
+	return func(pods []*workloadmeta.KubernetesPod) bool {
+		for _, pod := range pods {
+			if _, ok := ids[pod.ID]; ok {
+				return false
+			}
+		}
+		return true
 	}
 }

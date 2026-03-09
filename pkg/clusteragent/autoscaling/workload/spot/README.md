@@ -46,7 +46,6 @@ Cluster Agent re-enables spot scheduling after the spot disabled interval elapse
 
 - [ ] Emit Kubernetes events
 - [ ] Add metrics and observability
-- [ ] Refactor pod admission subscription to not depend on PodPatcher (currently via workload.PodPatcherDelegate)
 - [ ] Downscaling behaviour (similar to https://github.com/kubernetes/kubernetes/issues/124149): consider adding annotation
       `controller.kubernetes.io/pod-deletion-cost` to Deployment pods to keep on-demand/spot ratio during downscaling (see https://kubernetes.io/docs/reference/labels-annotations-taints/#pod-deletion-cost)
 

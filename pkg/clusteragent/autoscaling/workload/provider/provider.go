@@ -45,7 +45,7 @@ func StartWorkloadAutoscaling(
 	wlm workloadmeta.Component,
 	taggerComp tagger.Component,
 	senderManager sender.SenderManager,
-) (workload.PodPatcher, error) {
+) (*workload.PodHandler, error) {
 	if apiCl == nil {
 		return nil, errors.New("Impossible to start workload autoscaling without valid APIClient")
 	}
@@ -64,8 +64,9 @@ func StartWorkloadAutoscaling(
 	var spotScheduler *spot.Scheduler
 	if pkgconfigsetup.Datadog().GetBool("autoscaling.workload.spot.enabled") {
 		spotScheduler = spot.NewScheduler(spot.ReadConfig(pkgconfigsetup.Datadog()), clock, wlm, apiCl.DynamicCl, isLeaderFunc)
-		podPatcher = &workload.PodPatcherDelegate{Patcher: podPatcher, SpotScheduler: spotScheduler}
 	}
+	podHandler := workload.NewPodHandler(podPatcher, spotScheduler)
+
 	_, err := workload.NewConfigRetriever(ctx, clock, store, isLeaderFunc, rcClient)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to start workload autoscaling config retriever: %w", err)
@@ -120,7 +121,7 @@ func StartWorkloadAutoscaling(
 	}
 	go externalRecommender.Run(ctx)
 
-	return podPatcher, nil
+	return podHandler, nil
 }
 
 func buildExternalRecommenderTLSConfig(cfg config.Component) *external.TLSFilesConfig {

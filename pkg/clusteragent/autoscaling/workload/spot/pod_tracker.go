@@ -77,8 +77,19 @@ func (t *podTracker) addedOrUpdated(pod *workloadmeta.KubernetesPod) {
 		return
 	}
 
+	spotAssigned := isSpotAssigned(pod)
+
+	log.Debugf("Pod %s added/updated for owner %s (phase=%s, spot=%v)", pod.ID, owner, pod.Phase, spotAssigned)
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
+	// Terminal pods are treated as removed to free their spot/on-demand slot
+	// before replacement pods are admitted.
+	if pod.Phase == "Succeeded" || pod.Phase == "Failed" {
+		t.deletePodLocked(owner, pod.ID)
+		return
+	}
 
 	seenBefore := false
 	if ownerPods, exists := t.podsPerOwner[owner]; exists {
@@ -88,7 +99,7 @@ func (t *podTracker) addedOrUpdated(pod *workloadmeta.KubernetesPod) {
 	}
 	t.podsPerOwner[owner][pod.ID] = pod
 
-	if isSpotAssigned(pod) {
+	if spotAssigned {
 		// Note: we can not use CreationTimestamp or NodeName of [workloadmeta.KubernetesPod]
 		// as they are not populated by comp/core/workloadmeta/collectors/internal/kubeapiserver/pod.go
 		// so only check the Phase and use now for createdAt.
@@ -111,25 +122,39 @@ func (t *podTracker) addedOrUpdated(pod *workloadmeta.KubernetesPod) {
 	}
 }
 
-// removed updates tracking state when a pod is removed.
-func (t *podTracker) removed(pod *workloadmeta.KubernetesPod) {
+// deleted updates tracking state when a pod is deleted.
+func (t *podTracker) deleted(pod *workloadmeta.KubernetesPod) {
 	owner, hasOwner := resolveWLMPodOwner(pod)
 	if !hasOwner {
 		log.Debugf("Ignoring pod %s without owner", pod.ID)
 		return
 	}
 
+	log.Debugf("Pod %s deleted for owner %s (spot=%v)", pod.ID, owner, isSpotAssigned(pod))
+
+	t.deletePod(owner, pod.ID)
+}
+
+// deletePod deletes pod by owner and uid.
+func (t *podTracker) deletePod(owner ownerKey, uid string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if ownerPods, exists := t.podsPerOwner[owner]; exists {
-		if len(ownerPods) == 1 {
-			delete(t.podsPerOwner, owner)
-		} else {
-			delete(ownerPods, pod.ID)
+	t.deletePodLocked(owner, uid)
+}
+
+// deletePodLocked deletes a pod from podsPerOwner. Must be called with t.mu held.
+func (t *podTracker) deletePodLocked(owner ownerKey, uid string) {
+	if ownerPods, ownerExists := t.podsPerOwner[owner]; ownerExists {
+		if _, podExists := ownerPods[uid]; podExists {
+			if len(ownerPods) == 1 {
+				delete(t.podsPerOwner, owner)
+			} else {
+				delete(ownerPods, uid)
+			}
 		}
 	}
-	delete(t.pendingSpotPods, pod.ID)
+	delete(t.pendingSpotPods, uid)
 }
 
 // getPendingSpotPods returns spot-assigned pods created before since, grouped by rollout owner.
