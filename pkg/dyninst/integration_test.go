@@ -339,47 +339,75 @@ func runIntegrationTestSuite(
 	for _, cfg := range cfgs {
 		probes := testprogs.MustGetProbeDefinitions(t, service)
 		probes = slices.DeleteFunc(probes, testprogs.HasIssueTag)
-		// Some probes have different output in different versions, due to
-		// compiler changes. We rename the probes to organize output into different files.
+
+		// Filter skipped probes, resolve output file names, and
+		// collect variant names so files for other configs don't trigger
+		// "unexpected probes" errors.
+		otherVariantNames := make(map[string]struct{})
 		resultNames := make(map[string]string)
-		otherVersionNames := make(map[string]struct{})
+		var keptProbes []ir.ProbeDefinition
 		for _, p := range probes {
+			if testprogs.IsIntegrationConfigSkipped(t, p, cfg) {
+				otherVariantNames[p.GetID()] = struct{}{}
+				continue
+			}
+			keptProbes = append(keptProbes, p)
+
+			// Resolve version_diff tags to pick the base result name.
 			var versions []string
 			for _, tag := range p.GetTags() {
 				if strings.HasPrefix(tag, "version_diff:") {
 					versionDiff := strings.TrimPrefix(tag, "version_diff:")
 					versions = append(versions, versionDiff)
-					if cfg.GOTOOLCHAIN >= versionDiff {
-						resultNames[p.GetID()] = p.GetID() + "_geq_" + versionDiff
-						break
-					}
 				}
 			}
 			if versions == nil {
 				resultNames[p.GetID()] = p.GetID()
-				continue
-			}
-			// Find the largest version diff tag that applies to the version we are running with.
-			// Save other variants to recognize unexpected outputs.
-			slices.Sort(versions)
-			slices.Reverse(versions)
-			versions = append(versions, "")
-			found := false
-			for _, version := range versions {
-				var resultName string
-				if version == "" {
-					resultName = p.GetID()
-				} else {
-					resultName = p.GetID() + "_geq_" + version
+			} else {
+				// Find the largest version diff tag that applies to the
+				// version we are running with. Save other variants to
+				// recognize unexpected outputs.
+				slices.Sort(versions)
+				slices.Reverse(versions)
+				versions = append(versions, "")
+				found := false
+				for _, version := range versions {
+					var resultName string
+					if version == "" {
+						resultName = p.GetID()
+					} else {
+						resultName = p.GetID() + "_geq_" + version
+					}
+					if !found && cfg.GOTOOLCHAIN >= version {
+						resultNames[p.GetID()] = resultName
+						found = true
+					} else {
+						otherVariantNames[resultName] = struct{}{}
+					}
 				}
-				if !found && cfg.GOTOOLCHAIN >= version {
-					resultNames[p.GetID()] = resultName
-					found = true
+			}
+
+			// config_diff tags override the version_diff result for a
+			// specific arch+toolchain pair. The tag value is a Config
+			// string (arch=ARCH,toolchain=VERSION) parsed by parseConfig.
+			for _, tag := range p.GetTags() {
+				if !strings.HasPrefix(tag, "config_diff:") {
+					continue
+				}
+				diffCfg, err := testprogs.ParseConfig(tag[len("config_diff:"):])
+				require.NoError(t, err, "invalid config_diff tag %q on probe %s", tag, p.GetID())
+				configName := p.GetID() + "_config_" + diffCfg.String()
+				if diffCfg == cfg {
+					if prev := resultNames[p.GetID()]; prev != "" {
+						otherVariantNames[prev] = struct{}{}
+					}
+					resultNames[p.GetID()] = configName
 				} else {
-					otherVersionNames[resultName] = struct{}{}
+					otherVariantNames[configName] = struct{}{}
 				}
 			}
 		}
+		probes = keptProbes
 		t.Run(cfg.String(), func(t *testing.T) {
 			if cfg.GOARCH != runtime.GOARCH {
 				t.Skipf("cross-execution is not supported, running on %s, skipping %s", runtime.GOARCH, cfg.GOARCH)
@@ -421,7 +449,7 @@ func runIntegrationTestSuite(
 								if _, ok := got[id]; ok {
 									return true
 								}
-								if _, ok := otherVersionNames[id]; ok {
+								if _, ok := otherVariantNames[id]; ok {
 									return true
 								}
 								return false
