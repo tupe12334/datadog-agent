@@ -41,6 +41,19 @@ if defined XDG_CACHE_HOME (
   set "XDG_CACHE_HOME=%~dp0..\.cache"
 )
 
+:: Build args (mirrors Linux args array), injecting --repo_contents_cache= when cache is inside workspace
+:: Avoid `ERROR: The repo contents cache is inside the main repo. This can cause spurious failures.`
+set "args=%*"
+for %%i in ("%~dp0..") do call set "xdg_stripped=%%%%XDG_CACHE_HOME:%%~fi\=%%%%"
+if "!xdg_stripped!" neq "!XDG_CACHE_HOME!" if not "%~1"=="" (
+  if "%~2"=="" (
+    set "args=%~1 --repo_contents_cache="
+  ) else (
+    call set "args=%%args:*%~1 =%%"
+    set "args=%~1 --repo_contents_cache= !args!"
+  )
+)
+
 :: Check legacy max path length of 260 characters got lifted, or fail with instructions
 set "more_than_260_chars=!XDG_CACHE_HOME!\more-than-260-chars"
 for /l %%i in (1,1,26) do set "more_than_260_chars=!more_than_260_chars!\123456789"
@@ -56,7 +69,7 @@ if not exist "!more_than_260_chars!" (
 
 :: Not in CI nor GitHub Actions: simply execute `bazel` - done
 if defined CI if not defined GITHUB_ACTIONS goto :ci_config
-"%BAZEL_REAL%" !bazel_home_startup_option! %*
+"%BAZEL_REAL%" !bazel_home_startup_option! !args!
 exit /b !errorlevel!
 :ci_config
 
@@ -72,7 +85,7 @@ exit /b !errorlevel!
 >&2 powershell -NoProfile -Command "Get-Process bazel,java -ErrorAction SilentlyContinue | Select-Object 🟡,ProcessName,StartTime"
 
 :: Payload: execute `bazel` and remember exit status
-"%BAZEL_REAL%" %*
+"%BAZEL_REAL%" !args!
 set bazel_exit=!errorlevel!
 
 :: Diagnostics: dump logs on non-trivial failures (https://bazel.build/run/scripts#exit-codes)

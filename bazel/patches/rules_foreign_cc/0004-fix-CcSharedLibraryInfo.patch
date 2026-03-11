@@ -1,0 +1,16 @@
+diff --git a/foreign_cc/private/framework.bzl b/foreign_cc/private/framework.bzl
+index 58307bc..af1d671 100644
+--- a/foreign_cc/private/framework.bzl
++++ b/foreign_cc/private/framework.bzl
+@@ -9,2 +9,3 @@ load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
+ load("@rules_cc//cc:defs.bzl", "CcInfo", "cc_common")
++load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
+ load("//foreign_cc:providers.bzl", "ForeignCcArtifactInfo", "ForeignCcDepsInfo")
+@@ -969,6 +970,3 @@ def _define_inputs(attrs):
+     for dynamic_dep in attrs.dynamic_deps:
+-        if not bazel_features.globals.CcSharedLibraryInfo:
+-            fail("CcSharedLibraryInfo is only available in Bazel 7 or greater")
+-
+-        linker_input = dynamic_dep[bazel_features.globals.CcSharedLibraryInfo].linker_input
++        linker_input = dynamic_dep[CcSharedLibraryInfo].linker_input
+         bazel_libs += _collect_shared_libs(linker_input)
