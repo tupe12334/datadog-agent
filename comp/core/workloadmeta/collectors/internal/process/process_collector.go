@@ -28,6 +28,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/languagedetection/languagemodels"
 	"github.com/DataDog/datadog-agent/pkg/process/procutil"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	workloadmeta "github.com/DataDog/datadog-agent/comp/core/workloadmeta/def"
 	"github.com/DataDog/datadog-agent/pkg/discovery/core"
 	"github.com/DataDog/datadog-agent/pkg/discovery/model"
@@ -38,7 +40,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	sysprobeclient "github.com/DataDog/datadog-agent/pkg/system-probe/api/client"
 	sysconfig "github.com/DataDog/datadog-agent/pkg/system-probe/config"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/trace/traceutil/normalize"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -71,7 +72,7 @@ type collector struct {
 	ignoredPids              core.PidSet
 	pidHeartbeats            map[int32]time.Time
 	knownInjectionStatusPids core.PidSet // Track PIDs whose injection status we've already reported (but have no service data yet)
-	metricDiscoveredServices telemetry.Gauge
+	metricDiscoveredServices telemetrydef.Gauge
 }
 
 // EventType represents the type of collector event
@@ -214,12 +215,12 @@ func (c *collector) Start(ctx context.Context, store workloadmeta.Component) err
 	if c.isServiceDiscoveryEnabled() {
 		serviceCollectionInterval := c.getServiceCollectionInterval()
 		// Initialize service discovery metric
-		c.metricDiscoveredServices = telemetry.NewGaugeWithOpts(
+		c.metricDiscoveredServices = telemetryimpl.GetCompatComponent().NewGaugeWithOpts(
 			collectorID,
 			"discovered_services",
 			[]string{},
 			"Number of discovered alive services.",
-			telemetry.DefaultOptions,
+			telemetrydef.DefaultOptions,
 		)
 
 		if c.isProcessCollectionEnabled() || c.isLanguageCollectionEnabled() {

@@ -3,42 +3,26 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-present Datadog, Inc.
 
-//go:build test || functionaltests || stresstests
+//go:build (test || functionaltests || stresstests) && !serverless
 
 package telemetryimpl
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"go.uber.org/fx"
 
-	"github.com/DataDog/datadog-agent/comp/core/telemetry"
-	"github.com/DataDog/datadog-agent/pkg/util/fxutil"
+	telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 )
-
-type testDependencies struct {
-	fx.In
-
-	Lyfecycle fx.Lifecycle
-}
-
-// MockModule defines the fx options for the mock component.
-func MockModule() fxutil.Module {
-	return fxutil.Component(
-		fx.Provide(newMock),
-		fx.Provide(func(m telemetry.Mock) telemetry.Component { return m }))
-}
 
 // NewMock returns a new mock for telemetry
 func NewMock(t testing.TB) telemetry.Mock {
 	reg := prometheus.NewRegistry()
 
-	telemetry := &telemetryImplMock{
+	tel := &telemetryImplMock{
 		telemetryImpl{
 			mutex:           &mutex,
 			registry:        reg,
@@ -46,34 +30,23 @@ func NewMock(t testing.TB) telemetry.Mock {
 		},
 	}
 
-	t.Cleanup(telemetry.Reset)
-	return telemetry
+	t.Cleanup(tel.Reset)
+	return tel
+}
+
+// NewMockComponent creates a mock telemetry component suitable for fx injection.
+func NewMockComponent() telemetry.Mock {
+	return &telemetryImplMock{
+		telemetryImpl{
+			mutex:           &mutex,
+			registry:        prometheus.NewRegistry(),
+			defaultRegistry: prometheus.NewRegistry(),
+		},
+	}
 }
 
 type telemetryImplMock struct {
 	telemetryImpl
-}
-
-func newMock(deps testDependencies) telemetry.Mock {
-	reg := prometheus.NewRegistry()
-
-	telemetry := &telemetryImplMock{
-		telemetryImpl{
-			mutex:           &mutex,
-			registry:        reg,
-			defaultRegistry: prometheus.NewRegistry(),
-		},
-	}
-
-	deps.Lyfecycle.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			telemetry.Reset()
-
-			return nil
-		},
-	})
-
-	return telemetry
 }
 
 type internalMetric struct {

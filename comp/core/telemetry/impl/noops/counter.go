@@ -6,7 +6,7 @@
 package noopsimpl
 
 import (
-	"github.com/DataDog/datadog-agent/comp/core/telemetry"
+	telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 )
 
 // Counter implementation using Prometheus.

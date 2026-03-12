@@ -29,6 +29,8 @@ import (
 	log "github.com/DataDog/datadog-agent/comp/core/log/def"
 	"github.com/DataDog/datadog-agent/comp/core/sysprobeconfig"
 	tagger "github.com/DataDog/datadog-agent/comp/core/tagger/def"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	workloadmeta "github.com/DataDog/datadog-agent/comp/core/workloadmeta/def"
 	connectionsforwarder "github.com/DataDog/datadog-agent/comp/forwarder/connectionsforwarder/def"
 	"github.com/DataDog/datadog-agent/comp/forwarder/defaultforwarder"
@@ -45,7 +47,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/process/util/api"
 	apicfg "github.com/DataDog/datadog-agent/pkg/process/util/api/config"
 	"github.com/DataDog/datadog-agent/pkg/process/util/api/headers"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/flavor"
 	"github.com/DataDog/datadog-agent/pkg/util/kernel"
 	"github.com/DataDog/datadog-agent/pkg/version"
@@ -55,13 +56,13 @@ const clientID = "local_client"
 const telemetrySubsystem = "sender__connections"
 
 var senderTelemetry = struct {
-	queueSize       telemetry.Gauge
-	queueBytes      telemetry.Gauge
-	connectionCount telemetry.Counter
+	queueSize       telemetrydef.Gauge
+	queueBytes      telemetrydef.Gauge
+	connectionCount telemetrydef.Counter
 }{
-	telemetry.NewGauge(telemetrySubsystem, "queue_size", nil, ""),
-	telemetry.NewGauge(telemetrySubsystem, "queue_bytes", nil, ""),
-	telemetry.NewCounter(telemetrySubsystem, "connection_count", nil, ""),
+	telemetryimpl.GetCompatComponent().NewGauge(telemetrySubsystem, "queue_size", nil, ""),
+	telemetryimpl.GetCompatComponent().NewGauge(telemetrySubsystem, "queue_bytes", nil, ""),
+	telemetryimpl.GetCompatComponent().NewCounter(telemetrySubsystem, "connection_count", nil, ""),
 }
 
 // New creates a direct sender

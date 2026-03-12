@@ -9,18 +9,19 @@ import (
 	"expvar"
 	"strings"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	"github.com/DataDog/datadog-agent/comp/forwarder/defaultforwarder/transaction"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
 type counterExpvar struct {
-	counter telemetry.Counter
+	counter telemetrydef.Counter
 	expvar  expvar.Int
 }
 
 func newCounterExpvar(subsystem string, name string, tags []string, help string, parent *expvar.Map) *counterExpvar {
 	c := &counterExpvar{
-		counter: telemetry.NewCounter(subsystem, name, tags, help),
+		counter: telemetryimpl.GetCompatComponent().NewCounter(subsystem, name, tags, help),
 	}
 	expvarName := toCamelCase(name)
 	parent.Set(expvarName, &c.expvar)
@@ -33,13 +34,13 @@ func (c *counterExpvar) add(v float64, tagsValue ...string) {
 }
 
 type gaugeExpvar struct {
-	gauge  telemetry.Gauge
+	gauge  telemetrydef.Gauge
 	expvar expvar.Int
 }
 
 func newGaugeExpvar(subsystem string, name string, tags []string, help string, parent *expvar.Map) *gaugeExpvar {
 	g := &gaugeExpvar{
-		gauge: telemetry.NewGauge(subsystem, name, tags, help),
+		gauge: telemetryimpl.GetCompatComponent().NewGauge(subsystem, name, tags, help),
 	}
 	expvarName := toCamelCase(name)
 	parent.Set(expvarName, &g.expvar)

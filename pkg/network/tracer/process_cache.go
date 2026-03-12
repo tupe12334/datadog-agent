@@ -15,8 +15,9 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	"github.com/DataDog/datadog-agent/pkg/network/events"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -29,15 +30,15 @@ const (
 )
 
 var processCacheTelemetry = struct {
-	cacheEvicts   telemetry.Counter
+	cacheEvicts   telemetrydef.Counter
 	cacheLength   *prometheus.Desc
-	eventsDropped telemetry.Counter
-	eventsSkipped telemetry.Counter
+	eventsDropped telemetrydef.Counter
+	eventsSkipped telemetrydef.Counter
 }{
-	telemetry.NewCounter(processCacheModuleName, "cache_evicts", []string{}, "Counter measuring the number of evictions in the process cache"),
+	telemetryimpl.GetCompatComponent().NewCounter(processCacheModuleName, "cache_evicts", []string{}, "Counter measuring the number of evictions in the process cache"),
 	prometheus.NewDesc(processCacheModuleName+"__cache_length", "Gauge measuring the current size of the process cache", nil, nil),
-	telemetry.NewCounter(processCacheModuleName, "events_dropped", []string{}, "Counter measuring the number of dropped process events"),
-	telemetry.NewCounter(processCacheModuleName, "events_skipped", []string{}, "Counter measuring the number of skipped process events"),
+	telemetryimpl.GetCompatComponent().NewCounter(processCacheModuleName, "events_dropped", []string{}, "Counter measuring the number of dropped process events"),
+	telemetryimpl.GetCompatComponent().NewCounter(processCacheModuleName, "events_skipped", []string{}, "Counter measuring the number of skipped process events"),
 }
 
 type processList []*events.Process

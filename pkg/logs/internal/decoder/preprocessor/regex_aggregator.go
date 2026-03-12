@@ -10,11 +10,11 @@ import (
 	"bytes"
 	"regexp"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 	pkgconfigsetup "github.com/DataDog/datadog-agent/pkg/config/setup"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/logs/metrics"
 	status "github.com/DataDog/datadog-agent/pkg/logs/status/utils"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
 const regexLinesCombinedTelemetryMetricName = "datadog.logs_agent.auto_multi_line_lines_combined"
@@ -157,7 +157,7 @@ func (a *RegexAggregator) sendBuffer() {
 		linesCombined := int64(a.linesCombined - 1)
 		a.linesCombinedInfo.Add(linesCombined)
 		if a.telemetryEnabled {
-			telemetry.GetStatsTelemetryProvider().Count(regexLinesCombinedTelemetryMetricName, float64(linesCombined), []string{})
+			telemetrydef.GetStatsTelemetryProvider().Count(regexLinesCombinedTelemetryMetricName, float64(linesCombined), []string{})
 		}
 	}
 

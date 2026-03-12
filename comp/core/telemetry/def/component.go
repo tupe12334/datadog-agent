@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-present Datadog, Inc.
 
-// Package telemetry implements a component for all agent telemetry.
+// Package telemetry defines the interfaces for the telemetry component.
 package telemetry
 
 import (

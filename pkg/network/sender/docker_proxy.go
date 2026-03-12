@@ -16,9 +16,10 @@ import (
 	"sync"
 
 	log "github.com/DataDog/datadog-agent/comp/core/log/def"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	"github.com/DataDog/datadog-agent/pkg/network"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/model"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	ddmaps "github.com/DataDog/datadog-agent/pkg/util/maps"
 	ddos "github.com/DataDog/datadog-agent/pkg/util/os"
 )
@@ -26,15 +27,15 @@ import (
 const dockerProxySubsystem = "sender__docker_proxy"
 
 var dockerProxyTelemetry = struct {
-	processesDetected   telemetry.Counter
-	ipsFound            telemetry.Counter
-	connectionsFiltered telemetry.Counter
-	activeProxies       telemetry.Gauge
+	processesDetected   telemetrydef.Counter
+	ipsFound            telemetrydef.Counter
+	connectionsFiltered telemetrydef.Counter
+	activeProxies       telemetrydef.Gauge
 }{
-	telemetry.NewCounter(dockerProxySubsystem, "processes_detected", nil, ""),
-	telemetry.NewCounter(dockerProxySubsystem, "ips_found", nil, ""),
-	telemetry.NewCounter(dockerProxySubsystem, "connections_filtered", nil, ""),
-	telemetry.NewGauge(dockerProxySubsystem, "active_proxies", nil, ""),
+	telemetryimpl.GetCompatComponent().NewCounter(dockerProxySubsystem, "processes_detected", nil, ""),
+	telemetryimpl.GetCompatComponent().NewCounter(dockerProxySubsystem, "ips_found", nil, ""),
+	telemetryimpl.GetCompatComponent().NewCounter(dockerProxySubsystem, "connections_filtered", nil, ""),
+	telemetryimpl.GetCompatComponent().NewGauge(dockerProxySubsystem, "active_proxies", nil, ""),
 }
 
 type containerAddr struct {

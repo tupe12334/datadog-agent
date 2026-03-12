@@ -16,8 +16,8 @@ import (
 	manager "github.com/DataDog/ebpf-manager"
 	bpflib "github.com/cilium/ebpf"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 	"github.com/DataDog/datadog-agent/pkg/ebpf/bytecode"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/kernel"
 )
 
@@ -25,8 +25,8 @@ type coreAssetLoader struct {
 	coreDir   string
 	btfLoader *orderedBTFLoader
 	telemetry struct {
-		success telemetry.Counter
-		error   telemetry.Counter
+		success telemetrydef.Counter
+		error   telemetrydef.Counter
 	}
 }
 

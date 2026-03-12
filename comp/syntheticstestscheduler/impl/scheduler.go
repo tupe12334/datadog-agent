@@ -45,10 +45,11 @@ type syntheticsTestScheduler struct {
 	sendResult                   func(w *workerResult) (string, error)
 	hostNameService              hostname.Component
 	statsdClient                 ddgostatsd.ClientInterface
+	telemetry                    *syntheticsTelemetry
 }
 
 // newSyntheticsTestScheduler creates a scheduler and initializes its state.
-func newSyntheticsTestScheduler(configs *schedulerConfigs, forwarder eventplatform.Forwarder, logger log.Component, hostNameService hostname.Component, timeFunc func() time.Time, statsd ddgostatsd.ClientInterface, traceroute traceroute.Component) *syntheticsTestScheduler {
+func newSyntheticsTestScheduler(configs *schedulerConfigs, forwarder eventplatform.Forwarder, logger log.Component, hostNameService hostname.Component, timeFunc func() time.Time, statsd ddgostatsd.ClientInterface, traceroute traceroute.Component, tlm *syntheticsTelemetry) *syntheticsTestScheduler {
 	scheduler := &syntheticsTestScheduler{
 		epForwarder:                  forwarder,
 		log:                          logger,
@@ -63,6 +64,7 @@ func newSyntheticsTestScheduler(configs *schedulerConfigs, forwarder eventplatfo
 		flushInterval:                configs.flushInterval,
 		generateTestResultID:         generateRandomStringUInt63,
 		statsdClient:                 statsd,
+		telemetry:                    tlm,
 	}
 
 	// by default, sendResult delegates to the real forwarder-backed implementation
@@ -121,7 +123,7 @@ func (s *syntheticsTestScheduler) updateRunningState(newConfig map[string]common
 		pubID := newTestConfig.PublicID
 		seen[pubID] = true
 		current, exists := s.state.tests[pubID]
-		ChecksReceived.Inc()
+		s.telemetry.ChecksReceived.Inc()
 		s.statsdClient.Incr(syntheticsMetricPrefix+"checks_received", []string{fmt.Sprintf("org_id:%d", newTestConfig.OrgID)}, 1) //nolint:errcheck
 		if !exists {
 			s.state.tests[pubID] = &runningTestState{

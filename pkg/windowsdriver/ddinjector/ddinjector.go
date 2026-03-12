@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -29,23 +29,23 @@ const (
 // InjectorCounters encapsulates ddinjector counters to be reported upstream.
 type InjectorCounters struct {
 	// v1 fields
-	ProcessesAddedToInjectionTracker     telemetry.SimpleGauge
-	ProcessesRemovedFromInjectionTracker telemetry.SimpleGauge
-	ProcessesSkippedSubsystem            telemetry.SimpleGauge
-	ProcessesSkippedContainer            telemetry.SimpleGauge
-	ProcessesSkippedProtected            telemetry.SimpleGauge
-	ProcessesSkippedSystem               telemetry.SimpleGauge
-	ProcessesSkippedExcluded             telemetry.SimpleGauge
-	InjectionAttempts                    telemetry.SimpleGauge
-	InjectionAttemptFailures             telemetry.SimpleGauge
-	InjectionMaxTimeUs                   telemetry.SimpleGauge
-	InjectionSuccesses                   telemetry.SimpleGauge
-	InjectionFailures                    telemetry.SimpleGauge
-	PeCachingFailures                    telemetry.SimpleGauge
-	ImportDirectoryRestorationFailures   telemetry.SimpleGauge
-	PeMemoryAllocationFailures           telemetry.SimpleGauge
-	PeInjectionContextAllocated          telemetry.SimpleGauge
-	PeInjectionContextCleanedup          telemetry.SimpleGauge
+	ProcessesAddedToInjectionTracker     telemetrydef.SimpleGauge
+	ProcessesRemovedFromInjectionTracker telemetrydef.SimpleGauge
+	ProcessesSkippedSubsystem            telemetrydef.SimpleGauge
+	ProcessesSkippedContainer            telemetrydef.SimpleGauge
+	ProcessesSkippedProtected            telemetrydef.SimpleGauge
+	ProcessesSkippedSystem               telemetrydef.SimpleGauge
+	ProcessesSkippedExcluded             telemetrydef.SimpleGauge
+	InjectionAttempts                    telemetrydef.SimpleGauge
+	InjectionAttemptFailures             telemetrydef.SimpleGauge
+	InjectionMaxTimeUs                   telemetrydef.SimpleGauge
+	InjectionSuccesses                   telemetrydef.SimpleGauge
+	InjectionFailures                    telemetrydef.SimpleGauge
+	PeCachingFailures                    telemetrydef.SimpleGauge
+	ImportDirectoryRestorationFailures   telemetrydef.SimpleGauge
+	PeMemoryAllocationFailures           telemetrydef.SimpleGauge
+	PeInjectionContextAllocated          telemetrydef.SimpleGauge
+	PeInjectionContextCleanedup          telemetrydef.SimpleGauge
 }
 
 // Injector represents an opened instance to the ddinjector driver.

@@ -10,8 +10,9 @@ import (
 
 	"go.uber.org/atomic"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
 // The tagsetTelemetry struct handles telemetry for "large" tagsets.  For
@@ -29,7 +30,7 @@ type tagsetTelemetry struct {
 
 	// tlmHugeSeries is an array containing counters with the same values as
 	// hugeSeriesCount.
-	tlmHugeSeries []telemetry.Counter
+	tlmHugeSeries []telemetrydef.Counter
 
 	// hugeSketchesCount contains the total count of huge distributions, by
 	// threshold.
@@ -37,7 +38,7 @@ type tagsetTelemetry struct {
 
 	// tlmHugeSketches is an array containing counters with the same values as
 	// hugeSketchesCount.
-	tlmHugeSketches []telemetry.Counter
+	tlmHugeSketches []telemetrydef.Counter
 }
 
 func newTagsetTelemetry(thresholds []uint64) *tagsetTelemetry {
@@ -46,23 +47,23 @@ func newTagsetTelemetry(thresholds []uint64) *tagsetTelemetry {
 		size:              size,
 		sizeThresholds:    thresholds,
 		hugeSeriesCount:   make([]*atomic.Uint64, size),
-		tlmHugeSeries:     make([]telemetry.Counter, size),
+		tlmHugeSeries:     make([]telemetrydef.Counter, size),
 		hugeSketchesCount: make([]*atomic.Uint64, size),
-		tlmHugeSketches:   make([]telemetry.Counter, size),
+		tlmHugeSketches:   make([]telemetrydef.Counter, size),
 	}
 
 	for i, thresh := range t.sizeThresholds {
 		t.hugeSeriesCount[i] = atomic.NewUint64(0)
-		t.tlmHugeSeries[i] = telemetry.NewCounter("aggregator", fmt.Sprintf("series_tags_above_%d", thresh), nil, fmt.Sprintf("Count of timeseries with over %d tags", thresh))
+		t.tlmHugeSeries[i] = telemetryimpl.GetCompatComponent().NewCounter("aggregator", fmt.Sprintf("series_tags_above_%d", thresh), nil, fmt.Sprintf("Count of timeseries with over %d tags", thresh))
 		t.hugeSketchesCount[i] = atomic.NewUint64(0)
-		t.tlmHugeSketches[i] = telemetry.NewCounter("aggregator", fmt.Sprintf("distributions_tags_above_%d", thresh), nil, fmt.Sprintf("Count of distributions with over %d tags", thresh))
+		t.tlmHugeSketches[i] = telemetryimpl.GetCompatComponent().NewCounter("aggregator", fmt.Sprintf("distributions_tags_above_%d", thresh), nil, fmt.Sprintf("Count of distributions with over %d tags", thresh))
 	}
 
 	return t
 }
 
 // updateTelemetry implements common behavior fof the update*Telemetry methods.
-func (t *tagsetTelemetry) updateTelemetry(tagsetSize uint64, atomicCounts []*atomic.Uint64, tlms []telemetry.Counter) {
+func (t *tagsetTelemetry) updateTelemetry(tagsetSize uint64, atomicCounts []*atomic.Uint64, tlms []telemetrydef.Counter) {
 	for i, thresh := range t.sizeThresholds {
 		if tagsetSize > thresh {
 			atomicCounts[i].Inc()

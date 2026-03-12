@@ -17,21 +17,22 @@ import (
 
 	"go4.org/intern"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	workloadmeta "github.com/DataDog/datadog-agent/comp/core/workloadmeta/def"
 	pkgconfigsetup "github.com/DataDog/datadog-agent/pkg/config/setup"
 	"github.com/DataDog/datadog-agent/pkg/network"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const containerResolverSubsystem = "sender__container_resolver"
 
 var containerResolverTelemetry = struct {
-	addressCount telemetry.Gauge
-	tagCount     telemetry.Gauge
+	addressCount telemetrydef.Gauge
+	tagCount     telemetrydef.Gauge
 }{
-	telemetry.NewGauge(containerResolverSubsystem, "address_count", nil, ""),
-	telemetry.NewGauge(containerResolverSubsystem, "tag_count", nil, ""),
+	telemetryimpl.GetCompatComponent().NewGauge(containerResolverSubsystem, "address_count", nil, ""),
+	telemetryimpl.GetCompatComponent().NewGauge(containerResolverSubsystem, "tag_count", nil, ""),
 }
 
 type connKey struct {

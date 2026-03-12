@@ -12,15 +12,16 @@ package api
 import (
 	"net/http"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	pkgconfigsetup "github.com/DataDog/datadog-agent/pkg/config/setup"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver/leaderelection"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
-var forwardedRequest = telemetry.NewCounterWithOpts("", "forwarded_requests",
+var forwardedRequest = telemetryimpl.GetCompatComponent().NewCounterWithOpts("", "forwarded_requests",
 	[]string{"handler"}, "Counter of requests forwarded to the dca leader",
-	telemetry.Options{NoDoubleUnderscoreSep: true})
+	telemetrydef.Options{NoDoubleUnderscoreSep: true})
 
 // RequestPreHandler is a function that validates a http request and returns true if the request should be handled
 // otherwise it returns false and answers to the request.

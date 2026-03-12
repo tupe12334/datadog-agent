@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	opametrics "github.com/open-policy-agent/opa/v1/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cast"
@@ -17,8 +18,8 @@ import (
 
 var (
 	registrationMu       sync.Mutex
-	registeredHistograms map[string]telemetry.Histogram
-	registeredCounters   map[string]telemetry.Counter
+	registeredHistograms map[string]telemetrydef.Histogram
+	registeredCounters   map[string]telemetrydef.Counter
 )
 
 // NewRegoTelemetry returns a opa/metrics.Metrics interface to monitor rego's
@@ -32,12 +33,12 @@ func NewRegoTelemetry() opametrics.Metrics {
 	}
 }
 
-func registerHistogram(name string) telemetry.Histogram {
+func registerHistogram(name string) telemetrydef.Histogram {
 	registrationMu.Lock()
 	defer registrationMu.Unlock()
 
 	if registeredHistograms == nil {
-		registeredHistograms = make(map[string]telemetry.Histogram)
+		registeredHistograms = make(map[string]telemetrydef.Histogram)
 	}
 
 	if histogram, found := registeredHistograms[name]; found {
@@ -49,31 +50,31 @@ func registerHistogram(name string) telemetry.Histogram {
 		buckets[i] = v * float64(time.Millisecond)
 	}
 
-	histogram := telemetry.NewHistogram("opa", name, nil, "", buckets)
+	histogram := telemetryimpl.GetCompatComponent().NewHistogram("opa", name, nil, "", buckets)
 	registeredHistograms[name] = histogram
 	return histogram
 }
 
-func registerCounter(name string) telemetry.Counter {
+func registerCounter(name string) telemetrydef.Counter {
 	registrationMu.Lock()
 	defer registrationMu.Unlock()
 
 	if registeredCounters == nil {
-		registeredCounters = make(map[string]telemetry.Counter)
+		registeredCounters = make(map[string]telemetrydef.Counter)
 	}
 
 	if counter, found := registeredCounters[name]; found {
 		return counter
 	}
 
-	counter := telemetry.NewCounter("opa", name, nil, "")
+	counter := telemetryimpl.GetCompatComponent().NewCounter("opa", name, nil, "")
 	registeredCounters[name] = counter
 	return counter
 }
 
 type regoCounter struct {
 	regoCounter opametrics.Counter
-	ddCounter   telemetry.Counter
+	ddCounter   telemetrydef.Counter
 }
 
 func (c *regoCounter) Incr() {
@@ -92,7 +93,7 @@ func (c *regoCounter) Add(n uint64) {
 
 type regoHistogram struct {
 	regoHistogram opametrics.Histogram
-	ddHistogram   telemetry.Histogram
+	ddHistogram   telemetrydef.Histogram
 }
 
 func (h *regoHistogram) Value() interface{} {
@@ -106,7 +107,7 @@ func (h *regoHistogram) Update(n int64) {
 
 type regoTimer struct {
 	regoTimer   opametrics.Timer
-	ddHistogram telemetry.Histogram
+	ddHistogram telemetrydef.Histogram
 }
 
 func (t *regoTimer) Value() interface{} {

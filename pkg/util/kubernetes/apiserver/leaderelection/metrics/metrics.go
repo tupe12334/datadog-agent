@@ -8,7 +8,8 @@
 package metrics
 
 import (
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 )
 
 const (
@@ -21,12 +22,12 @@ const (
 )
 
 // NewLeaderMetric returns the leader_election_is_leader metric
-func NewLeaderMetric() telemetry.Gauge {
-	return telemetry.NewGaugeWithOpts(
+func NewLeaderMetric() telemetrydef.Gauge {
+	return telemetryimpl.GetCompatComponent().NewGaugeWithOpts(
 		"leader_election",
 		"is_leader",
 		[]string{JoinLeaderLabel, isLeaderLabel}, // join_leader is for label joins
 		"The label is_leader is true if the reporting pod is leader, equals false otherwise.",
-		telemetry.Options{NoDoubleUnderscoreSep: true},
+		telemetrydef.Options{NoDoubleUnderscoreSep: true},
 	)
 }

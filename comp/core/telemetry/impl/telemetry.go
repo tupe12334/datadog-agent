@@ -3,6 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-present Datadog, Inc.
 
+//go:build !serverless
+
 // Package telemetryimpl implements the telemetry component interface.
 package telemetryimpl
 
@@ -12,22 +14,14 @@ import (
 	"net/http"
 	"sync"
 
-	"go.uber.org/fx"
-
-	"github.com/DataDog/datadog-agent/comp/core/telemetry"
-	"github.com/DataDog/datadog-agent/pkg/util/fxutil"
+	telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	compdef "github.com/DataDog/datadog-agent/comp/def"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/expfmt"
 )
-
-// Module defines the fx options for this component.
-func Module() fxutil.Module {
-	return fxutil.Component(
-		fx.Provide(newTelemetryComponent))
-}
 
 // TODO (components): Remove the globals and move this into `newTelemetry` after all telemetry is migrated to the component
 var (
@@ -44,12 +38,6 @@ type telemetryImpl struct {
 	defaultRegistry *prometheus.Registry
 }
 
-type dependencies struct {
-	fx.In
-
-	Lyfecycle fx.Lifecycle
-}
-
 func newRegistry() *prometheus.Registry {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
@@ -57,19 +45,32 @@ func newRegistry() *prometheus.Registry {
 	return reg
 }
 
-func newTelemetryComponent(deps dependencies) telemetry.Component {
-	comp := newTelemetry()
+// Requires defines the dependencies for the telemetry component
+type Requires struct {
+	compdef.In
 
+	Lc compdef.Lifecycle
+}
+
+// Provides defines the output of the telemetry component
+type Provides struct {
+	compdef.Out
+
+	Comp telemetry.Component
+}
+
+// NewComponent creates a new telemetry component.
+func NewComponent(deps Requires) Provides {
+	comp := newTelemetry()
 	// Since we are in the middle of a migration to components, we need to ensure that the global variables are reset
 	// when the component is stopped.
-	deps.Lyfecycle.Append(fx.Hook{
+	deps.Lc.Append(compdef.Hook{
 		OnStop: func(_ context.Context) error {
 			comp.Reset()
-
 			return nil
 		},
 	})
-	return comp
+	return Provides{Comp: comp}
 }
 
 func newTelemetry() telemetry.Component {

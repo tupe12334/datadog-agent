@@ -15,9 +15,10 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go4.org/intern"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 	"github.com/DataDog/datadog-agent/pkg/network"
 	"github.com/DataDog/datadog-agent/pkg/network/events"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -36,13 +37,13 @@ const (
 )
 
 var containerStoreTelemetry = struct {
-	nonStaleEvictions telemetry.Counter
-	eventsDropped     telemetry.Counter
-	readFailures      telemetry.Counter
+	nonStaleEvictions telemetrydef.Counter
+	eventsDropped     telemetrydef.Counter
+	readFailures      telemetrydef.Counter
 }{
-	telemetry.NewCounter(moduleName, "non_stale_evicts", []string{}, "Counter measuring the number of evictions of non-stale containers in the container store"),
-	telemetry.NewCounter(moduleName, "events_dropped", []string{}, "Counter measuring the number of dropped process events"),
-	telemetry.NewCounter(moduleName, "read_failures", []string{}, "Counter measuring the number of failures to read container data such as resolv.conf"),
+	telemetryimpl.GetCompatComponent().NewCounter(moduleName, "non_stale_evicts", []string{}, "Counter measuring the number of evictions of non-stale containers in the container store"),
+	telemetryimpl.GetCompatComponent().NewCounter(moduleName, "events_dropped", []string{}, "Counter measuring the number of dropped process events"),
+	telemetryimpl.GetCompatComponent().NewCounter(moduleName, "read_failures", []string{}, "Counter measuring the number of failures to read container data such as resolv.conf"),
 }
 
 type containerStoreItem struct {

@@ -46,9 +46,9 @@ func (sgw *StatGaugeWrapper) Load() int64 {
 }
 
 // NewStatGaugeWrapper returns a new StatGaugeWrapper
-func NewStatGaugeWrapper(subsystem string, statName string, tags []string, description string) *StatGaugeWrapper {
+func NewStatGaugeWrapper(comp Component, subsystem string, statName string, tags []string, description string) *StatGaugeWrapper {
 	return &StatGaugeWrapper{
 		stat:  atomic.NewInt64(0),
-		gauge: NewGauge(subsystem, statName, tags, description),
+		gauge: comp.NewGauge(subsystem, statName, tags, description),
 	}
 }

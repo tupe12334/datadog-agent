@@ -9,10 +9,7 @@ package noopsimpl
 import (
 	"net/http"
 
-	"go.uber.org/fx"
-
-	"github.com/DataDog/datadog-agent/comp/core/telemetry"
-	"github.com/DataDog/datadog-agent/pkg/util/fxutil"
+	telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 )
 
 type noopImpl struct{}
@@ -109,8 +106,7 @@ func GetCompatComponent() telemetry.Component {
 	return newTelemetry()
 }
 
-// Module defines the fx options for this component.
-func Module() fxutil.Module {
-	return fxutil.Component(
-		fx.Provide(newTelemetry))
+// NewComponent creates a new noop telemetry component.
+func NewComponent() telemetry.Component {
+	return newTelemetry()
 }

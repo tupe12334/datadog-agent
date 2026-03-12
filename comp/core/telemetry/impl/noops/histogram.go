@@ -5,7 +5,7 @@
 
 package noopsimpl
 
-import "github.com/DataDog/datadog-agent/comp/core/telemetry"
+import telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 
 // Prometheus implements histograms using Prometheus.
 type slsHistogram struct{}

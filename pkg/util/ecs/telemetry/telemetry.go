@@ -12,17 +12,18 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
+	telemetryimpl "github.com/DataDog/datadog-agent/comp/core/telemetry/impl"
 )
 
 var (
 	// queries tracks ECS requests done by the Agent.
-	queries = telemetry.NewCounterWithOpts(
+	queries = telemetryimpl.GetCompatComponent().NewCounterWithOpts(
 		"ecs",
 		"queries",
 		[]string{"path", "code"},
 		"Count of ECS queries by path and response code. The response code defaults to 0 for unachieved queries.",
-		telemetry.Options{NoDoubleUnderscoreSep: true},
+		telemetrydef.Options{NoDoubleUnderscoreSep: true},
 	)
 )
 

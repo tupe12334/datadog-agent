@@ -5,7 +5,7 @@
 
 package noopsimpl
 
-import "github.com/DataDog/datadog-agent/comp/core/telemetry"
+import telemetry "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 
 // Gauge implementation using Prometheus.
 type slsGauge struct{}

@@ -10,11 +10,11 @@ import (
 	"regexp"
 	"time"
 
+	telemetrydef "github.com/DataDog/datadog-agent/comp/core/telemetry/def"
 	pkgconfigsetup "github.com/DataDog/datadog-agent/pkg/config/setup"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/logs/metrics"
 	status "github.com/DataDog/datadog-agent/pkg/logs/status/utils"
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 )
 
 // Currently only reported when telemetryEnabled is true. telemetryEnabled is only true when
@@ -178,7 +178,7 @@ func (h *MultiLineHandler) sendBuffer() {
 			linesCombined := int64(h.linesCombined - 1)
 			h.linesCombinedInfo.Add(linesCombined)
 			if h.telemetryEnabled {
-				telemetry.GetStatsTelemetryProvider().Count(linesCombinedTelemetryMetricName, float64(linesCombined), []string{})
+				telemetrydef.GetStatsTelemetryProvider().Count(linesCombinedTelemetryMetricName, float64(linesCombined), []string{})
 			}
 		}
 

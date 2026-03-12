@@ -124,7 +124,7 @@ func (s *syntheticsTestScheduler) runWorker(ctx context.Context, workerID int) {
 			if err != nil {
 				s.log.Debugf("[worker%d] error interpreting test config: %s", workerID, err)
 				s.statsdClient.Incr(syntheticsMetricPrefix+"error_test_config", []string{"reason:error_test_config", fmt.Sprintf("org_id:%d", syntheticsTestCtx.cfg.OrgID), fmt.Sprintf("subtype:%s", syntheticsTestCtx.cfg.Config.Request.GetSubType())}, 1) //nolint:errcheck
-				ErrorTestConfig.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
+				s.telemetry.ErrorTestConfig.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
 			}
 
 			hname, err := s.hostNameService.Get(ctx)
@@ -147,12 +147,12 @@ func (s *syntheticsTestScheduler) runWorker(ctx context.Context, workerID int) {
 				s.log.Debugf("[worker%d] error running traceroute: %s, publicID %s", workerID, tracerouteErr, syntheticsTestCtx.cfg.PublicID)
 				wResult.tracerouteError = tracerouteErr
 				s.statsdClient.Incr(syntheticsMetricPrefix+"traceroute.error", []string{"reason:error_running_datadog_traceroute", fmt.Sprintf("org_id:%d", syntheticsTestCtx.cfg.OrgID), fmt.Sprintf("subtype:%s", syntheticsTestCtx.cfg.Config.Request.GetSubType())}, 1) //nolint:errcheck
-				TracerouteError.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
+				s.telemetry.TracerouteError.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
 				_, err := s.sendResult(wResult)
 				if err != nil {
 					s.log.Debugf("[worker%d] error sending result: %s, publicID %s", workerID, err, syntheticsTestCtx.cfg.PublicID)
 					s.statsdClient.Incr(syntheticsMetricPrefix+"evp.send_result_failure", []string{"reason:error_sending_result", fmt.Sprintf("org_id:%d", syntheticsTestCtx.cfg.OrgID), fmt.Sprintf("subtype:%s", syntheticsTestCtx.cfg.Config.Request.GetSubType())}, 1) //nolint:errcheck
-					SendResultFailure.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
+					s.telemetry.SendResultFailure.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
 				}
 				continue
 			}
@@ -171,10 +171,10 @@ func (s *syntheticsTestScheduler) runWorker(ctx context.Context, workerID int) {
 			if err != nil {
 				s.log.Debugf("[worker%d] error sending result: %s, publicID %s", workerID, err, syntheticsTestCtx.cfg.PublicID)
 				s.statsdClient.Incr(syntheticsMetricPrefix+"evp.send_result_failure", []string{"reason:error_sending_result", fmt.Sprintf("org_id:%d", syntheticsTestCtx.cfg.OrgID), fmt.Sprintf("subtype:%s", syntheticsTestCtx.cfg.Config.Request.GetSubType())}, 1) //nolint:errcheck
-				SendResultFailure.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
+				s.telemetry.SendResultFailure.Inc(string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
 			}
 			s.statsdClient.Incr(syntheticsMetricPrefix+"checks_processed", []string{"status:" + status, fmt.Sprintf("org_id:%d", syntheticsTestCtx.cfg.OrgID), fmt.Sprintf("subtype:%s", syntheticsTestCtx.cfg.Config.Request.GetSubType())}, 1) //nolint:errcheck
-			ChecksProcessed.Inc(status, string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
+			s.telemetry.ChecksProcessed.Inc(status, string(syntheticsTestCtx.cfg.Config.Request.GetSubType()))
 		}
 	}
 }

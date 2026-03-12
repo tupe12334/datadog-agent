@@ -3,7 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-// Package telemetry provides types and functions for internal telemetry
 package telemetry
 
 import (
@@ -47,9 +46,9 @@ func (sgw *StatCounterWrapper) Load() int64 {
 }
 
 // NewStatCounterWrapper returns a new StatCounterWrapper
-func NewStatCounterWrapper(subsystem string, statName string, tags []string, description string) *StatCounterWrapper {
+func NewStatCounterWrapper(comp Component, subsystem string, statName string, tags []string, description string) *StatCounterWrapper {
 	return &StatCounterWrapper{
 		stat:    atomic.NewInt64(0),
-		counter: NewCounter(subsystem, statName, tags, description),
+		counter: comp.NewCounter(subsystem, statName, tags, description),
 	}
 }
