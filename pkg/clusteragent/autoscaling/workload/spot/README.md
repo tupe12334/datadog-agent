@@ -47,7 +47,6 @@ Cluster Agent re-enables spot scheduling after the spot disabled interval elapse
 - [ ] Refactor Scheduler.Run to launch two threads to consume pod updates and checkOnDemandFallback such that later does not block the former
 - [ ] Move spot configuration to the Deployment/StatefulSet annotations
 - [ ] Filter out non-spot eligible pods for tracker
-- [ ] Refactor tracker to group all counts (admission+wlm) per owner
 - [ ] Add StatefulSet tests
 - [ ] Implement Argo Rollout support
 - [ ] Emit Kubernetes events
