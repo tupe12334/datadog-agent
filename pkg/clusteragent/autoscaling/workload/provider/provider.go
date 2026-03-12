@@ -104,7 +104,6 @@ func StartWorkloadAutoscaling(
 	go podWatcher.Run(ctx)
 	if spotScheduler != nil {
 		go spotScheduler.Run(ctx)
-		<-spotScheduler.WaitSubscribed()
 	}
 	go controller.Run(ctx)
 
