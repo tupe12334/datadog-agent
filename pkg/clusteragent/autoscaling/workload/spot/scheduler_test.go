@@ -8,7 +8,6 @@
 package spot_test
 
 import (
-	"context"
 	"math/rand/v2"
 	"strconv"
 	"testing"
@@ -30,16 +29,10 @@ func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clo
 		ScheduleTimeout:     1 * time.Minute,
 		DisabledInterval:    2 * time.Minute,
 	}
-	rollout := spot.RolloutFunc(func(context.Context, spot.OwnerKey, time.Time) (bool, error) {
-		return true, nil
-	})
-	isLeader := func() bool {
-		return true
-	}
 
 	clk := clocktesting.NewFakeClock(time.Now())
 
-	scheduler := spot.NewSchedulerForTest(config, clk, cluster.WLM(), rollout, isLeader)
+	scheduler := spot.NewTestScheduler(config, clk, cluster.WLM())
 	go scheduler.Run(t.Context())
 	<-scheduler.WaitSubscribed()
 

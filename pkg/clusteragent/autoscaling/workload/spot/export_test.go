@@ -10,19 +10,26 @@ package spot
 import (
 	"context"
 	"time"
+
+	"k8s.io/utils/clock"
+
+	workloadmeta "github.com/DataDog/datadog-agent/comp/core/workloadmeta/def"
 )
 
-// OwnerKey exports ownerKey for testing.
-type OwnerKey = ownerKey
-
-// RolloutFunc is a function type implementing rollout for testing.
-type RolloutFunc func(context.Context, OwnerKey, time.Time) (bool, error)
-
-func (f RolloutFunc) restart(ctx context.Context, k ownerKey, ts time.Time) (bool, error) {
-	return f(ctx, k, ts)
+// NewTestScheduler create a Scheduler for testing.
+func NewTestScheduler(config Config, clk clock.WithTicker, wlm workloadmeta.Component) *Scheduler {
+	rollout := rolloutFunc(func(context.Context, ownerKey, time.Time) (bool, error) {
+		return true, nil
+	})
+	isLeader := func() bool {
+		return true
+	}
+	return newScheduler(config, clk, wlm, rollout, isLeader)
 }
 
-var _ rollout = RolloutFunc(nil)
+// rolloutFunc is a function type implementing rollout for testing.
+type rolloutFunc func(context.Context, ownerKey, time.Time) (bool, error)
 
-// NewSchedulerForTest exports newScheduler for testing.
-var NewSchedulerForTest = newScheduler
+func (f rolloutFunc) restart(ctx context.Context, k ownerKey, ts time.Time) (bool, error) {
+	return f(ctx, k, ts)
+}
