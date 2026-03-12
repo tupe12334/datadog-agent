@@ -70,7 +70,7 @@ func (s *Scheduler) Config() Config {
 func (s *Scheduler) Run(ctx context.Context) {
 	log.Infof("Starting spot scheduler: %s", s.config)
 
-	filter := workloadmeta.NewFilterBuilder().AddKind(workloadmeta.KindKubernetesPod).Build()
+	filter := workloadmeta.NewFilterBuilder().AddKindWithEntityFilter(workloadmeta.KindKubernetesPod, spotAssignedFilter).Build()
 	ch := s.wlm.Subscribe("spot-scheduler", workloadmeta.NormalPriority, filter)
 	close(s.subscribed)
 	defer s.wlm.Unsubscribe(ch)
@@ -148,9 +148,10 @@ func (s *Scheduler) PodCreated(pod *corev1.Pod) (bool, error) {
 
 	if isSpot {
 		assignToSpot(pod)
-		return true, nil
+	} else {
+		assignToOnDemand(pod)
 	}
-	return false, nil
+	return true, nil
 }
 
 // PodDeleted is called when a pod deletion is intercepted via admission webhook,
@@ -187,11 +188,26 @@ func assignToSpot(pod *corev1.Pod) {
 		Effect:   corev1.TaintEffectNoSchedule,
 	})
 
-	// podTracker needs to know pod assignment via a label.
 	if pod.Labels == nil {
 		pod.Labels = map[string]string{}
 	}
-	pod.Labels[SpotAssignedLabel] = "true"
+	pod.Labels[SpotAssignedLabel] = SpotAssignedSpot
+}
+
+func assignToOnDemand(pod *corev1.Pod) {
+	if pod.Labels == nil {
+		pod.Labels = map[string]string{}
+	}
+	pod.Labels[SpotAssignedLabel] = SpotAssignedOnDemand
+}
+
+func spotAssignedFilter(entity workloadmeta.Entity) bool {
+	if pod, ok := entity.(*workloadmeta.KubernetesPod); ok {
+		if label, ok := pod.Labels[SpotAssignedLabel]; ok {
+			return label == SpotAssignedSpot || label == SpotAssignedOnDemand
+		}
+	}
+	return false
 }
 
 // checkOnDemandFallback checks pending spot-assigned pods, disables spot scheduling and triggers rollout for pending workloads if needed.

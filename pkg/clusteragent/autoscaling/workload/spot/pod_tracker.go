@@ -229,5 +229,5 @@ func (p *pods) spotCount() int {
 }
 
 func isSpotAssigned(pod *workloadmeta.KubernetesPod) bool {
-	return pod.Labels[SpotAssignedLabel] == "true"
+	return pod.Labels[SpotAssignedLabel] == SpotAssignedSpot
 }

@@ -46,7 +46,6 @@ Cluster Agent re-enables spot scheduling after the spot disabled interval elapse
 
 - [ ] Refactor Scheduler.Run to launch two threads to consume pod updates and checkOnDemandFallback such that later does not block the former
 - [ ] Move spot configuration to the Deployment/StatefulSet annotations
-- [ ] Filter out non-spot eligible pods for tracker
 - [ ] Add StatefulSet tests
 - [ ] Implement Argo Rollout support
 - [ ] Emit Kubernetes events
@@ -103,8 +102,9 @@ spec:
         autoscaling.datadoghq.com/spot-min-on-demand-replicas: "1" # schedule at least one pod onto on-demand node
       labels:
         app: nginx
-        # Set automatically on spot-assigned pods by Cluster Agent (not user-configurable):
-        # autoscaling.datadoghq.com/spot-assigned: "true"
+        # Set automatically by Cluster Agent on spot-eligible pods (not user-configurable):
+        # autoscaling.datadoghq.com/spot-assigned-to: "spot"      # spot-assigned pods
+        # autoscaling.datadoghq.com/spot-assigned-to: "on-demand" # on-demand pods
     spec:
       containers:
       - name: nginx
@@ -113,23 +113,23 @@ spec:
         - containerPort: 80
 ```
 
-Pods scheduled on spot instances have `autoscaling.datadoghq.com/spot-assigned=true` label.
+Spot-eligible pods have `autoscaling.datadoghq.com/spot-assigned-to` label set to `spot` or `on-demand`.
 
-Use `kubectl get pods` with `-Lautoscaling.datadoghq.com/spot-assigned` to see which pods are scheduled on spot instances:
+Use `kubectl get pods` with `-Lautoscaling.datadoghq.com/spot-assigned-to` to see capacity assignment:
 
 ```console
-$ kubectl get pods -lapp=nginx -Lautoscaling.datadoghq.com/spot-assigned
-NAME                     READY   STATUS    RESTARTS   AGE     SPOT-ASSIGNED
-nginx-6f8f465d8c-2mtzt   1/1     Running   0          5m25s   true
-nginx-6f8f465d8c-4s9nz   1/1     Running   0          5m26s
-nginx-6f8f465d8c-5p7ps   1/1     Running   0          5m29s
-nginx-6f8f465d8c-7nlw6   1/1     Running   0          5m26s   true
-nginx-6f8f465d8c-8pdqp   1/1     Running   0          5m27s
-nginx-6f8f465d8c-frgvp   1/1     Running   0          5m27s   true
-nginx-6f8f465d8c-kmr7h   1/1     Running   0          5m29s   true
-nginx-6f8f465d8c-p548f   1/1     Running   0          5m29s
-nginx-6f8f465d8c-s6cnj   1/1     Running   0          5m29s   true
-nginx-6f8f465d8c-sn6dw   1/1     Running   0          5m29s
+$ kubectl get pods -lapp=nginx -Lautoscaling.datadoghq.com/spot-assigned-to
+NAME                     READY   STATUS    RESTARTS   AGE     SPOT-ASSIGNED-TO
+nginx-6f8f465d8c-2mtzt   1/1     Running   0          5m25s   spot
+nginx-6f8f465d8c-4s9nz   1/1     Running   0          5m26s   on-demand
+nginx-6f8f465d8c-5p7ps   1/1     Running   0          5m29s   on-demand
+nginx-6f8f465d8c-7nlw6   1/1     Running   0          5m26s   spot
+nginx-6f8f465d8c-8pdqp   1/1     Running   0          5m27s   on-demand
+nginx-6f8f465d8c-frgvp   1/1     Running   0          5m27s   spot
+nginx-6f8f465d8c-kmr7h   1/1     Running   0          5m29s   spot
+nginx-6f8f465d8c-p548f   1/1     Running   0          5m29s   on-demand
+nginx-6f8f465d8c-s6cnj   1/1     Running   0          5m29s   spot
+nginx-6f8f465d8c-sn6dw   1/1     Running   0          5m29s   on-demand
 ```
 
 
