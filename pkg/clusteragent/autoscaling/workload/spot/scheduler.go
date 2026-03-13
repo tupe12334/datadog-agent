@@ -107,7 +107,8 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
-// PodCreated decides whether a pod should be scheduled on spot and updates it accordingly.
+// PodCreated is called via admission webhook.
+// It decides whether a pod should be scheduled on spot and updates it accordingly.
 func (s *Scheduler) PodCreated(pod *corev1.Pod) (bool, error) {
 	if !s.isSpotEligible(pod) {
 		return false, nil
@@ -154,10 +155,10 @@ func (s *Scheduler) PodCreated(pod *corev1.Pod) (bool, error) {
 	return true, nil
 }
 
-// PodDeleted is called when a pod deletion is intercepted via admission webhook,
-// allowing immediate freeing of the spot/on-demand slot before workloadmeta propagates.
+// PodDeleted is called via admission webhook.
+// It stops tracking the pod.
 func (s *Scheduler) PodDeleted(pod *corev1.Pod) {
-	if !s.isSpotEligible(pod) {
+	if !hasSpotAssignedLabel(pod.Labels) {
 		return
 	}
 
@@ -203,9 +204,14 @@ func assignToOnDemand(pod *corev1.Pod) {
 
 func spotAssignedFilter(entity workloadmeta.Entity) bool {
 	if pod, ok := entity.(*workloadmeta.KubernetesPod); ok {
-		if label, ok := pod.Labels[SpotAssignedLabel]; ok {
-			return label == SpotAssignedSpot || label == SpotAssignedOnDemand
-		}
+		return hasSpotAssignedLabel(pod.Labels)
+	}
+	return false
+}
+
+func hasSpotAssignedLabel(labels map[string]string) bool {
+	if label, ok := labels[SpotAssignedLabel]; ok {
+		return label == SpotAssignedSpot || label == SpotAssignedOnDemand
 	}
 	return false
 }

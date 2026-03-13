@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	clocktesting "k8s.io/utils/clock/testing"
@@ -262,6 +263,47 @@ func TestScenarios(t *testing.T) {
 			cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("spot", expectedSpot))
 			cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", expectedOnDemand))
 		}
+	})
+
+	t.Run("Pods not eligible for spot are scheduled onto on-demand node", func(t *testing.T) {
+		// Given
+		cluster := newFakeCluster(t)
+		cluster.AddOnDemandNode("on-demand")
+		cluster.AddSpotNode("spot")
+
+		runTestScheduler(t, cluster)
+
+		// When
+		rs := updateDeployment(cluster, "default", "nginx", 5, nil, "")
+
+		// Then
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", 5))
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("spot", 0))
+	})
+
+	t.Run("Pods not eligible for spot are not tracked", func(t *testing.T) {
+		// Given
+		cluster := newFakeCluster(t)
+		cluster.AddOnDemandNode("on-demand")
+		cluster.AddSpotNode("spot")
+
+		s, _ := runTestScheduler(t, cluster)
+
+		// When
+		rs := updateDeployment(cluster, "default", "nginx", 5, nil, "")
+
+		// Then
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", 5))
+		assert.Zero(t, s.TrackedPodCount("default", kubernetes.ReplicaSetKind, rs))
+
+		// When
+		deleted := make(map[string]struct{}, 5)
+		for _, pod := range cluster.ListOwnerPods(kubernetes.ReplicaSetKind, "default", rs) {
+			cluster.DeletePod(pod)
+			deleted[pod.ID] = struct{}{}
+		}
+		// Then
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectHasNoneOf(deleted))
 	})
 }
 
