@@ -103,7 +103,7 @@ func StartWorkloadAutoscaling(
 	// TODO: Wait POD Watcher sync before running the controller
 	go podWatcher.Run(ctx)
 	if spotScheduler != nil {
-		go spotScheduler.Run(ctx)
+		spotScheduler.Start(ctx)
 	}
 	go controller.Run(ctx)
 

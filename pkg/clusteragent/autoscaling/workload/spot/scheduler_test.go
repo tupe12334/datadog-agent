@@ -34,7 +34,7 @@ func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clo
 	clk := clocktesting.NewFakeClock(time.Now())
 
 	scheduler := spot.NewTestScheduler(config, clk, cluster.WLM())
-	go scheduler.Run(t.Context())
+	scheduler.Start(t.Context())
 	<-scheduler.WaitSubscribed()
 
 	cluster.OnPodCreated(scheduler.PodCreated)

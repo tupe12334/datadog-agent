@@ -66,17 +66,22 @@ func (s *Scheduler) Config() Config {
 	return s.config
 }
 
-// Run subscribes to workloadmeta pod events and periodically checks for on-demand fallback.
-func (s *Scheduler) Run(ctx context.Context) {
+// Start launches goroutines to track pod updates and check for on-demand fallback and returns immediately.
+func (s *Scheduler) Start(ctx context.Context) {
 	log.Infof("Starting spot scheduler: %s", s.config)
 
+	// Run in separate goroutines so that a slow fallback check (which may make Kubernetes API calls)
+	// does not delay pod updates processing.
+	go s.trackPodUpdates(ctx)
+	go s.checkOnDemandFallback(ctx)
+}
+
+// trackPodUpdates subscribes to workloadmeta pod events and updates the tracker.
+func (s *Scheduler) trackPodUpdates(ctx context.Context) {
 	filter := workloadmeta.NewFilterBuilder().AddKindWithEntityFilter(workloadmeta.KindKubernetesPod, spotAssignedFilter).Build()
 	ch := s.wlm.Subscribe("spot-scheduler", workloadmeta.NormalPriority, filter)
 	close(s.subscribed)
 	defer s.wlm.Unsubscribe(ch)
-
-	ticker := s.clock.NewTicker(checkOnDemandFallbackInterval)
-	defer ticker.Stop()
 
 	for {
 		select {
@@ -99,9 +104,22 @@ func (s *Scheduler) Run(ctx context.Context) {
 				}
 			}
 			eventBundle.Acknowledge()
+		}
+	}
+}
+
+// checkOnDemandFallback periodically checks for pending spot pods and triggers on-demand fallback if needed.
+func (s *Scheduler) checkOnDemandFallback(ctx context.Context) {
+	ticker := s.clock.NewTicker(checkOnDemandFallbackInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
 		case now := <-ticker.C():
 			if s.isLeader() {
-				s.checkOnDemandFallback(ctx, now)
+				s.checkOnDemandFallbackOnce(ctx, now)
 			}
 		}
 	}
@@ -216,8 +234,8 @@ func hasSpotAssignedLabel(labels map[string]string) bool {
 	return false
 }
 
-// checkOnDemandFallback checks pending spot-assigned pods, disables spot scheduling and triggers rollout for pending workloads if needed.
-func (s *Scheduler) checkOnDemandFallback(ctx context.Context, now time.Time) {
+// checkOnDemandFallbackOnce checks pending spot-assigned pods, disables spot scheduling and triggers rollout for pending workloads if needed.
+func (s *Scheduler) checkOnDemandFallbackOnce(ctx context.Context, now time.Time) {
 	if s.reEnableSpotScheduling(now) {
 		log.Infof("Spot scheduling re-enabled")
 	}

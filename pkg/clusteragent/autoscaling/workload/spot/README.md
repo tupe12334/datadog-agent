@@ -44,7 +44,6 @@ Cluster Agent re-enables spot scheduling after the spot disabled interval elapse
 
 ### TODO
 
-- [ ] Refactor Scheduler.Run to launch two threads to consume pod updates and checkOnDemandFallback such that later does not block the former
 - [ ] Move spot configuration to the Deployment/StatefulSet annotations
 - [ ] Add StatefulSet tests
 - [ ] Implement Argo Rollout support
