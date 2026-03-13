@@ -437,9 +437,6 @@
 /pkg/status/health                      @DataDog/agent-runtimes
 /pkg/status/collector                   @DataDog/agent-runtimes
 /pkg/status/clusteragent                @DataDog/container-platform
-/pkg/telemetry/                         @DataDog/agent-runtimes
-/pkg/telemetry/stat_gauge_wrapper.go    @DataDog/ebpf-platform
-/pkg/telemetry/stat_counter_wrapper.go  @DataDog/ebpf-platform
 /pkg/template/                          @DataDog/agent-runtimes
 /pkg/version/                           @DataDog/agent-runtimes
 /pkg/obfuscate/                         @DataDog/agent-apm
@@ -812,6 +809,7 @@
 /test/new-e2e/tests/agent-subcommands/secret      @DataDog/agent-configuration
 /test/new-e2e/tests/agent-subcommands/status      @DataDog/agent-configuration
 /test/new-e2e/tests/containers                @DataDog/container-integrations @DataDog/container-platform
+/test/new-e2e/tests/containers/cluster_agent_sgc_binary_test.go    @DataDog/agent-configuration 
 /test/new-e2e/tests/containers/ecs_test.go    @DataDog/ecs-experiences
 /test/new-e2e/tests/discovery                 @DataDog/agent-discovery
 /test/new-e2e/tests/fips-compliance           @DataDog/agent-runtimes
