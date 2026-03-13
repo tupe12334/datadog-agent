@@ -8,6 +8,7 @@
 package spot_test
 
 import (
+	"context"
 	"math/rand/v2"
 	"strconv"
 	"testing"
@@ -23,7 +24,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes"
 )
 
-func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clocktesting.FakeClock) {
+func runTestScheduler(ctx context.Context, cluster *fakeCluster) (*spot.Scheduler, *clocktesting.FakeClock) {
 	config := spot.Config{
 		Percentage:          50,
 		MinOnDemandReplicas: 1,
@@ -34,7 +35,7 @@ func runTestScheduler(t *testing.T, cluster *fakeCluster) (*spot.Scheduler, *clo
 	clk := clocktesting.NewFakeClock(time.Now())
 
 	scheduler := spot.NewTestScheduler(config, clk, cluster.WLM())
-	scheduler.Start(t.Context())
+	scheduler.Start(ctx)
 	<-scheduler.WaitSubscribed()
 
 	cluster.OnPodCreated(scheduler.PodCreated)
@@ -77,7 +78,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		// When
 		rs := updateDeployment(cluster, "default", "nginx", 1, spotAnnotations(100, 2), "")
@@ -95,7 +96,7 @@ func TestScenarios(t *testing.T) {
 		const replicas = 10
 		rs1 := updateDeployment(cluster, "default", "nginx", replicas, nil, "")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		// When
 		rs2 := updateDeployment(cluster, "default", "nginx", replicas, spotAnnotations(60, 2), rs1)
@@ -111,7 +112,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		// When: initial deployment with 5 replicas at 60%
 		annotations := spotAnnotations(60, 2)
@@ -135,7 +136,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		// When
 		const replicas = 10
@@ -178,7 +179,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		// No spot node: spot-assigned pods stay Pending.
 
-		s, clk := runTestScheduler(t, cluster)
+		s, clk := runTestScheduler(t.Context(), cluster)
 
 		// When
 		annotations := spotAnnotations(60, 2)
@@ -226,7 +227,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		const replicas = 10
 		const minOnDemand = 2
@@ -271,7 +272,7 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		runTestScheduler(t, cluster)
+		runTestScheduler(t.Context(), cluster)
 
 		// When
 		rs := updateDeployment(cluster, "default", "nginx", 5, nil, "")
@@ -287,14 +288,16 @@ func TestScenarios(t *testing.T) {
 		cluster.AddOnDemandNode("on-demand")
 		cluster.AddSpotNode("spot")
 
-		s, _ := runTestScheduler(t, cluster)
+		s, _ := runTestScheduler(t.Context(), cluster)
 
 		// When
 		rs := updateDeployment(cluster, "default", "nginx", 5, nil, "")
 
 		// Then
 		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", 5))
-		assert.Zero(t, s.TrackedPodCount("default", kubernetes.ReplicaSetKind, rs))
+		total, spot := s.TrackedCounts("default", kubernetes.ReplicaSetKind, rs)
+		assert.Zero(t, total)
+		assert.Zero(t, spot)
 
 		// When
 		deleted := make(map[string]struct{}, 5)
@@ -304,6 +307,36 @@ func TestScenarios(t *testing.T) {
 		}
 		// Then
 		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectHasNoneOf(deleted))
+	})
+
+	t.Run("Restarted scheduler tracks existing pods", func(t *testing.T) {
+		// Given
+		cluster := newFakeCluster(t)
+		cluster.AddOnDemandNode("on-demand")
+		cluster.AddSpotNode("spot")
+
+		ctx1, stopScheduler := context.WithCancel(t.Context())
+		defer stopScheduler()
+
+		runTestScheduler(ctx1, cluster)
+
+		const replicas = 10
+		annotations := spotAnnotations(60, 2)
+		rs := updateDeployment(cluster, "default", "nginx", replicas, annotations, "")
+
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("spot", 6))
+		cluster.AssertOwnerPods(kubernetes.ReplicaSetKind, "default", rs, expectRunning("on-demand", 4))
+
+		// When
+		stopScheduler()
+
+		s2, _ := runTestScheduler(t.Context(), cluster)
+
+		// Then
+		assert.Eventually(t, func() bool {
+			total, spotCount := s2.TrackedCounts("default", kubernetes.ReplicaSetKind, rs)
+			return total == replicas && spotCount == 6
+		}, 1*time.Second, 10*time.Millisecond)
 	})
 }
 

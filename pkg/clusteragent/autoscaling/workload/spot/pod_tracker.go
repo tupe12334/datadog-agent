@@ -201,12 +201,16 @@ func (p *pods) track(uid string, isSpot bool) {
 	if isSpot {
 		if _, exists := p.spotUIDs[uid]; !exists {
 			p.spotUIDs[uid] = struct{}{}
-			p.admissionSpotCount--
+			if p.admissionSpotCount > 0 {
+				p.admissionSpotCount--
+			}
 		}
 	} else {
 		if _, exists := p.onDemandUIDs[uid]; !exists {
 			p.onDemandUIDs[uid] = struct{}{}
-			p.admissionOnDemandCount--
+			if p.admissionOnDemandCount > 0 {
+				p.admissionOnDemandCount--
+			}
 		}
 	}
 }

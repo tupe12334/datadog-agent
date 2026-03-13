@@ -27,15 +27,15 @@ func NewTestScheduler(config Config, clk clock.WithTicker, wlm workloadmeta.Comp
 	return newScheduler(config, clk, wlm, rollout, isLeader)
 }
 
-// TrackedPodCount returns the total number of tracked pods (including in-flight admissions) for the given owner.
-func (s *Scheduler) TrackedPodCount(namespace, kind, name string) int {
+// TrackedCounts returns the total and spot tracked pod counts (including in-flight admissions) for the given owner.
+func (s *Scheduler) TrackedCounts(namespace, kind, name string) (total, spot int) {
 	s.tracker.mu.RLock()
 	defer s.tracker.mu.RUnlock()
 	owner := ownerKey{Namespace: namespace, Kind: kind, Name: name}
 	if pods, ok := s.tracker.podsPerOwner[owner]; ok {
-		return pods.totalCount()
+		return pods.totalCount(), pods.spotCount()
 	}
-	return 0
+	return 0, 0
 }
 
 // rolloutFunc is a function type implementing rollout for testing.
