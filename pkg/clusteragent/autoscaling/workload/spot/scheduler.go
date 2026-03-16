@@ -56,16 +56,6 @@ func newScheduler(cfg Config, clk clock.WithTicker, wlm workloadmeta.Component, 
 	}
 }
 
-// WaitSubscribed returns a channel that is closed once Run has subscribed to workloadmeta events.
-func (s *Scheduler) WaitSubscribed() <-chan struct{} {
-	return s.subscribed
-}
-
-// Config returns the scheduler configuration.
-func (s *Scheduler) Config() Config {
-	return s.config
-}
-
 // Start launches goroutines to track pod updates and check for on-demand fallback and returns immediately.
 func (s *Scheduler) Start(ctx context.Context) {
 	log.Infof("Starting spot scheduler: %s", s.config)
@@ -141,7 +131,7 @@ func (s *Scheduler) PodCreated(pod *corev1.Pod) (bool, error) {
 
 	spotPercentage, minOnDemand := s.readConfig(pod)
 
-	disabledUntil, disabled := s.IsSpotSchedulingDisabled()
+	disabledUntil, disabled := s.isSpotSchedulingDisabled()
 
 	isSpot := s.tracker.admitNewPod(owner, func(total, spot int) bool {
 		if disabled {
@@ -269,8 +259,7 @@ func (s *Scheduler) checkOnDemandFallbackOnce(ctx context.Context, now time.Time
 	}
 }
 
-// IsSpotSchedulingDisabled return true if spot scheduling is disabled and a timestamp until it is disabled.
-func (s *Scheduler) IsSpotSchedulingDisabled() (time.Time, bool) {
+func (s *Scheduler) isSpotSchedulingDisabled() (time.Time, bool) {
 	s.mu.RLock()
 	spotDisabledUntil := s.spotDisabledUntil
 	s.mu.RUnlock()

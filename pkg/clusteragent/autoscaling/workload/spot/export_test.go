@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-present Datadog, Inc.
 
-//go:build kubeapiserver && test
+//go:build kubeapiserver
 
 package spot
 
@@ -36,6 +36,21 @@ func (s *Scheduler) TrackedCounts(namespace, kind, name string) (total, spot int
 		return pods.totalCount(), pods.spotCount()
 	}
 	return 0, 0
+}
+
+// WaitSubscribed returns a channel that is closed once Run has subscribed to workloadmeta events.
+func (s *Scheduler) WaitSubscribed() <-chan struct{} {
+	return s.subscribed
+}
+
+// Config returns the scheduler configuration.
+func (s *Scheduler) Config() Config {
+	return s.config
+}
+
+// IsSpotSchedulingDisabled returns true if spot scheduling is disabled and a timestamp until it is disabled.
+func (s *Scheduler) IsSpotSchedulingDisabled() (time.Time, bool) {
+	return s.isSpotSchedulingDisabled()
 }
 
 // rolloutFunc is a function type implementing rollout for testing.
