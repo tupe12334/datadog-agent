@@ -1173,7 +1173,7 @@ func (p *EBPFProbe) handleEvent(CPU int, data []byte) {
 				}
 			}
 
-			p.Resolvers.ProcessResolver.TryReparentFromProcfs(entry, metrics.ReparentCallpathRelatedEvent, nil)
+			p.Resolvers.ProcessResolver.TryReparentFromProcfsLocked(entry, metrics.ReparentCallpathRelatedEvent, nil)
 
 			relatedEvents = append(relatedEvents, relatedEvent)
 		}

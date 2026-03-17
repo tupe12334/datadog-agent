@@ -169,20 +169,9 @@ func (p *EBPFResolver) resolveParentFromProcfs(entry *model.ProcessCacheEntry, c
 	}
 }
 
-// TryReparentFromProcfs walks the ancestor chain of the given entry up to
-// pid 1 and looks for exited ancestors whose children may not have been
-// reparented yet. For each such ancestor it reads the children's current ppid
-// from procfs and updates the cache links. If procfs hasn't been updated yet
-// (race with forget_original_parent), the children stay linked to their dead
-// parent which is still valid for field resolution (Go GC keeps the object
-// alive). When a broken ancestor link is encountered (Ancestor is nil, PPid
-// unknown), the parent is resolved from procfs so the walk can continue.
-// Only ancestors within tryReparentMaxForkDepth fork levels are checked
-// (exec transitions do not count toward the depth).
-func (p *EBPFResolver) TryReparentFromProcfs(entry *model.ProcessCacheEntry, callpathTag string, newEntryCb func(*model.ProcessCacheEntry, error)) {
-	p.Lock()
-	defer p.Unlock()
-
+// tryReparentFromProcfs is the internal unlocked version.
+// Must be called with the lock held.
+func (p *EBPFResolver) tryReparentFromProcfs(entry *model.ProcessCacheEntry, callpathTag string, newEntryCb func(*model.ProcessCacheEntry, error)) {
 	var prev *model.ProcessCacheEntry
 	forkDepth := 0
 	for pc := entry; pc != nil && pc.Pid != 1; prev, pc = pc, pc.Ancestor {
@@ -204,6 +193,30 @@ func (p *EBPFResolver) TryReparentFromProcfs(entry *model.ProcessCacheEntry, cal
 			break
 		}
 	}
+}
+
+// TryReparentFromProcfs walks the ancestor chain of the given entry up to
+// pid 1 and looks for exited ancestors whose children may not have been
+// reparented yet. For each such ancestor it reads the children's current ppid
+// from procfs and updates the cache links. If procfs hasn't been updated yet
+// (race with forget_original_parent), the children stay linked to their dead
+// parent which is still valid for field resolution (Go GC keeps the object
+// alive). When a broken ancestor link is encountered (Ancestor is nil, PPid
+// unknown), the parent is resolved from procfs so the walk can continue.
+// Only ancestors within tryReparentMaxForkDepth fork levels are checked
+// (exec transitions do not count toward the depth).
+func (p *EBPFResolver) TryReparentFromProcfs(entry *model.ProcessCacheEntry, callpathTag string, newEntryCb func(*model.ProcessCacheEntry, error)) {
+	p.Lock()
+	defer p.Unlock()
+
+	p.tryReparentFromProcfs(entry, callpathTag, newEntryCb)
+}
+
+// TryReparentFromProcfsLocked is like TryReparentFromProcfs but assumes the
+// caller already holds the resolver lock. Use this from callbacks invoked
+// during resolution (e.g. newEntryCb) to avoid deadlocking on the non-reentrant mutex.
+func (p *EBPFResolver) TryReparentFromProcfsLocked(entry *model.ProcessCacheEntry, callpathTag string, newEntryCb func(*model.ProcessCacheEntry, error)) {
+	p.tryReparentFromProcfs(entry, callpathTag, newEntryCb)
 }
 
 // TryReparentFromKernelPPid compares the live ppid reported by the kernel in
