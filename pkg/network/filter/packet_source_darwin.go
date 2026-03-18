@@ -28,7 +28,7 @@ const (
 	telemetryModuleName = "network_tracer__filter"
 	defaultSnapLen      = 4096
 	pcapTimeout         = time.Second
-	pcapBPFBufferSize = 16 * 1024 * 1024 // 16 MB per-interface BPF ring buffer
+	pcapBPFBufferSize   = 16 * 1024 * 1024 // 16 MB per-interface BPF ring buffer
 
 	// localAddrRefreshInterval controls how often we discover new interfaces
 	// and refresh local address caches. After a BPF error (e.g. interface
@@ -88,9 +88,9 @@ type interfaceHandle struct {
 
 // LibpcapSource provides packet capture using libpcap/BPF on macOS
 type LibpcapSource struct {
-	interfacesMu sync.RWMutex
-	interfaces   map[string]*interfaceHandle // keyed by interface name
-	snapLen      int
+	interfacesMu  sync.RWMutex
+	interfaces    map[string]*interfaceHandle // keyed by interface name
+	snapLen       int
 	bpfBufferSize int
 	bpfFilter     string
 
