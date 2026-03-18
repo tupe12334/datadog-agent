@@ -523,7 +523,7 @@ var zeroProcessContext ProcessContext
 type ProcessCacheEntry struct {
 	ProcessContext
 
-	Children []*ProcessCacheEntry `field:"-"`
+	Children []*ProcessCacheEntry `field:"-" copy:"-"`
 }
 
 // IsContainerRoot returns whether this is a top level process in the container ID

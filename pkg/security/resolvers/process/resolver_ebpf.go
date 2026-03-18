@@ -161,6 +161,8 @@ func (p *EBPFResolver) resolveParentFromProcfs(entry *model.ProcessCacheEntry, c
 		return
 	}
 
+	entry.PPid = newPPidU32
+
 	if newParent := p.entryCache[newPPidU32]; newParent != nil {
 		entry.Reparent(newParent)
 		p.reparentSuccessStats[callpathTag].Inc()
