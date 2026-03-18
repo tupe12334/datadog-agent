@@ -107,6 +107,24 @@ func defaultCatalog() *componentCatalog {
 				},
 				defaultEnabled: true,
 			},
+			{
+				name:        "scanmw",
+				displayName: "ScanMW",
+				kind:        componentDetector,
+				factory: func() any {
+					return NewScanMWDetector()
+				},
+				defaultEnabled: false,
+			},
+			{
+				name:        "scanwelch",
+				displayName: "ScanWelch",
+				kind:        componentDetector,
+				factory: func() any {
+					return NewScanWelchDetector()
+				},
+				defaultEnabled: false,
+			},
 			// ---- Correlators ----
 			{
 				name:        "cross_signal",
@@ -155,6 +173,15 @@ func defaultCatalog() *componentCatalog {
 					})
 				},
 				defaultEnabled: true,
+			},
+			{
+				name:        "passthrough",
+				displayName: "Passthrough",
+				kind:        componentCorrelator,
+				factory: func() any {
+					return NewDetectorPassthroughCorrelator()
+				},
+				defaultEnabled: false,
 			},
 		},
 	}
