@@ -974,6 +974,61 @@ func setupFipsLogsConfig(config pkgconfigmodel.Config, configPrefix string, url 
 	config.Set(configPrefix+"logs_dd_url", url, pkgconfigmodel.SourceAgentRuntime)
 }
 
+// getSecretBackends reads the extra_secret_backends map from config. It uses config.Get
+// rather than GetStringMap to preserve the nested map structure of each backend's config,
+// then deep-converts any map[interface{}]interface{} values (from go-yaml v2) to
+// map[string]interface{} so callers can safely use type assertions.
+func getSecretBackends(config pkgconfigmodel.Config) map[string]interface{} {
+	raw := config.Get("extra_secret_backends")
+	if raw == nil {
+		return nil
+	}
+	m, err := deepToStringMap(raw)
+	if err != nil {
+		return nil
+	}
+	return m
+}
+
+// deepToStringMap recursively converts any map (including map[interface{}]interface{} as
+// returned by go-yaml v2) into map[string]interface{}.
+func deepToStringMap(v interface{}) (map[string]interface{}, error) {
+	switch m := v.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(m))
+		for k, val := range m {
+			out[k] = deepToStringMapValue(val)
+		}
+		return out, nil
+	case map[interface{}]interface{}:
+		out := make(map[string]interface{}, len(m))
+		for k, val := range m {
+			out[fmt.Sprintf("%v", k)] = deepToStringMapValue(val)
+		}
+		return out, nil
+	}
+	return nil, fmt.Errorf("extra_secret_backends: expected map, got %T", v)
+}
+
+// deepToStringMapValue recursively normalises map values.
+func deepToStringMapValue(v interface{}) interface{} {
+	switch m := v.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(m))
+		for k, val := range m {
+			out[k] = deepToStringMapValue(val)
+		}
+		return out
+	case map[interface{}]interface{}:
+		out := make(map[string]interface{}, len(m))
+		for k, val := range m {
+			out[fmt.Sprintf("%v", k)] = deepToStringMapValue(val)
+		}
+		return out
+	}
+	return v
+}
+
 // resolveSecrets merges all the secret values from origin into config. Secret values
 // are identified by a value of the form "ENC[key]" where key is the secret key.
 // See: https://github.com/DataDog/datadog-agent/blob/main/docs/agent/secrets.md
@@ -984,6 +1039,7 @@ func resolveSecrets(config pkgconfigmodel.Config, secretResolver secrets.Compone
 	secretResolver.Configure(secrets.ConfigParams{
 		Type:                         config.GetString("secret_backend_type"),
 		Config:                       config.GetStringMap("secret_backend_config"),
+		Backends:                     getSecretBackends(config),
 		Command:                      config.GetString("secret_backend_command"),
 		Arguments:                    config.GetStringSlice("secret_backend_arguments"),
 		Timeout:                      config.GetInt("secret_backend_timeout"),
@@ -1000,7 +1056,7 @@ func resolveSecrets(config pkgconfigmodel.Config, secretResolver secrets.Compone
 		APIKeyFailureRefreshInterval: config.GetInt("secret_refresh_on_api_key_failure_interval"),
 	})
 
-	if config.GetString("secret_backend_command") != "" || config.GetString("secret_backend_type") != "" {
+	if config.GetString("secret_backend_command") != "" || config.GetString("secret_backend_type") != "" || len(getSecretBackends(config)) > 0 {
 		// Viper doesn't expose the final location of the file it
 		// loads. Since we are searching for 'datadog.yaml' in multiple
 		// locations we let viper determine the one to use before

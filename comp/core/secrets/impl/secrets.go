@@ -92,6 +92,7 @@ type secretResolver struct {
 
 	backendType                     string
 	backendConfig                   map[string]interface{}
+	backendConfigs                  map[string]interface{}
 	backendCommand                  string
 	backendArguments                []string
 	backendTimeout                  int
@@ -273,13 +274,14 @@ func (r *secretResolver) registerSecretOrigin(handle string, origin string, path
 func (r *secretResolver) Configure(params secrets.ConfigParams) {
 	r.backendType = params.Type
 	r.backendConfig = params.Config
+	r.backendConfigs = params.Backends
 	r.backendCommand = params.Command
 	r.embeddedBackendPermissiveRights = false
 	if r.backendCommand != "" && r.backendType != "" {
 		log.Warnf("Both 'secret_backend_command' and 'secret_backend_type' are set, 'secret_backend_type' will be ignored")
 	}
-	// only use the backend type option if the backend command is not set
-	if r.backendType != "" && r.backendCommand == "" {
+	// use the embedded connector if a backend type or named backends are configured and no explicit command is set
+	if (r.backendType != "" || len(r.backendConfigs) > 0) && r.backendCommand == "" {
 		if runtime.GOOS == "windows" {
 			r.backendCommand = filepath.Join(
 				defaultpaths.GetEmbeddedBinPath(),
@@ -526,18 +528,25 @@ func (r *secretResolver) Resolve(data []byte, origin string, imageName string, k
 	// check if any new secrets need to be fetch
 	if len(newHandles) != 0 {
 		var secretResponse map[string]string
-		var err error
+		var handleErrors map[string]error
 		if r.fetchHookFunc != nil {
-			// hook used only for tests
+			// hook used only for tests (old signature: single error applied to all handles)
+			var err error
 			secretResponse, err = r.fetchHookFunc(newHandles)
-		} else {
-			secretResponse, err = r.fetchSecret(newHandles)
-		}
-		if err != nil {
-			for _, handle := range newHandles {
-				r.unresolvedSecrets[fmt.Sprintf("'%s' from %s: %s", handle, origin, err)] = struct{}{}
+			if err != nil {
+				handleErrors = make(map[string]error, len(newHandles))
+				for _, h := range newHandles {
+					handleErrors[h] = err
+				}
 			}
-			return nil, err
+		} else {
+			secretResponse, handleErrors = r.fetchSecret(newHandles)
+		}
+		if len(handleErrors) > 0 {
+			for handle, herr := range handleErrors {
+				r.unresolvedSecrets[fmt.Sprintf("'%s' from %s: %s", handle, origin, herr)] = struct{}{}
+			}
+			return nil, fmt.Errorf("could not resolve %d secret handle(s), see 'agent secret' for details", len(handleErrors))
 		}
 
 		w.Resolver = func(path []string, value string) (string, error) {
@@ -756,15 +765,23 @@ func (r *secretResolver) performRefresh() (string, error) {
 	log.Infof("Refreshing secrets for %d handles", len(newHandles))
 
 	var secretResponse map[string]string
-	var err error
+	var handleErrors map[string]error
 	if r.fetchHookFunc != nil {
-		// hook used only for tests
+		// hook used only for tests (old signature: single error applied to all handles)
+		var err error
 		secretResponse, err = r.fetchHookFunc(newHandles)
+		if err != nil {
+			return "", err
+		}
 	} else {
-		secretResponse, err = r.fetchSecret(newHandles)
-	}
-	if err != nil {
-		return "", err
+		secretResponse, handleErrors = r.fetchSecret(newHandles)
+		if len(handleErrors) > 0 {
+			errParts := make([]string, 0, len(handleErrors))
+			for h, e := range handleErrors {
+				errParts = append(errParts, fmt.Sprintf("handle %q: %s", h, e))
+			}
+			return "", fmt.Errorf("%s", strings.Join(errParts, "; "))
+		}
 	}
 
 	var auditRecordErr error
@@ -780,7 +797,7 @@ func (r *secretResolver) performRefresh() (string, error) {
 
 	// render a report
 	t := template.New("secret_refresh")
-	t, err = t.Parse(secretRefreshTmpl)
+	t, err := t.Parse(secretRefreshTmpl)
 	if err != nil {
 		return "", err
 	}
