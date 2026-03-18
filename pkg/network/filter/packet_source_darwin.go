@@ -29,9 +29,6 @@ const (
 	defaultSnapLen      = 4096
 	pcapTimeout         = time.Second
 	pcapBPFBufferSize = 16 * 1024 * 1024 // 16 MB per-interface BPF ring buffer
-	// DNSBPFBufferSize is a smaller ring buffer suitable for DNS-only capture,
-	// where packet rates are much lower than general traffic.
-	DNSBPFBufferSize = 1 * 1024 * 1024 // 1 MB
 
 	// localAddrRefreshInterval controls how often we discover new interfaces
 	// and refresh local address caches. After a BPF error (e.g. interface
