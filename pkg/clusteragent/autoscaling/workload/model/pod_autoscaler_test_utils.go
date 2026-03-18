@@ -57,6 +57,9 @@ type FakePodAutoscalerInternal struct {
 	ScaledReplicas                     *int32
 	Error                              error
 	Deleted                            bool
+	ProfileName                        string
+	DesiredProfileTemplateHash         string
+	AppliedProfileHash                 string
 	TargetGVK                          schema.GroupVersionKind
 	CustomRecommenderConfiguration     *RecommenderConfiguration
 }
@@ -102,6 +105,9 @@ func (f FakePodAutoscalerInternal) Build() PodAutoscalerInternal {
 		scaledReplicas:                     f.ScaledReplicas,
 		error:                              f.Error,
 		deleted:                            f.Deleted,
+		profileName:                        f.ProfileName,
+		desiredProfileTemplateHash:         f.DesiredProfileTemplateHash,
+		appliedProfileHash:                 f.AppliedProfileHash,
 		targetGVK:                          f.TargetGVK,
 		customRecommenderConfiguration:     f.CustomRecommenderConfiguration,
 	}
