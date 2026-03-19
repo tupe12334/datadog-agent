@@ -770,7 +770,7 @@ func (r *secretResolver) performRefresh() (string, error) {
 	log.Infof("Refreshing secrets for %d handles", len(newHandles))
 
 	var secretResponse map[string]string
-	var handleErrors map[string]error
+	var refreshErr error
 	if r.fetchHookFunc != nil {
 		// hook used only for tests (old signature: single error applied to all handles)
 		var err error
@@ -779,13 +779,15 @@ func (r *secretResolver) performRefresh() (string, error) {
 			return "", err
 		}
 	} else {
+		var handleErrors map[string]error
 		secretResponse, handleErrors = r.fetchSecret(newHandles)
 		if len(handleErrors) > 0 {
 			errParts := make([]string, 0, len(handleErrors))
 			for h, e := range handleErrors {
 				errParts = append(errParts, fmt.Sprintf("handle %q: %s", h, e))
 			}
-			return "", fmt.Errorf("%s", strings.Join(errParts, "; "))
+			// Don't return early — apply successfully fetched secrets before reporting the error.
+			refreshErr = fmt.Errorf("%s", strings.Join(errParts, "; "))
 		}
 	}
 
@@ -812,7 +814,10 @@ func (r *secretResolver) performRefresh() (string, error) {
 	}
 	result := b.String()
 
-	return result, auditRecordErr
+	if auditRecordErr != nil {
+		return result, auditRecordErr
+	}
+	return result, refreshErr
 }
 
 type auditRecord struct {
