@@ -20,6 +20,7 @@ import (
 	secrets "github.com/DataDog/datadog-agent/comp/core/secrets/def"
 	"github.com/DataDog/datadog-agent/pkg/util/filesystem"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/util/scrubber"
 )
 
 type limitBuffer struct {
@@ -74,7 +75,11 @@ func (r *secretResolver) execCommand(inputPayload string) ([]byte, error) {
 	// buffer logs until it's initialized. This means the time of the log line will be the one after the package is
 	// initialized and not the creation time. This is an issue when troubleshooting a secret_backend_command in
 	// datadog.yaml.
-	log.Debugf("%s | calling secret_backend_command with payload: '%s'", time.Now().String(), inputPayload)
+	scrubbedPayload, err := scrubber.ScrubJSONCompactString(inputPayload)
+	if err != nil {
+		scrubbedPayload = "<scrubbing error>"
+	}
+	log.Debugf("%s | calling secret_backend_command with payload: '%s'", time.Now().String(), scrubbedPayload)
 	start := time.Now()
 	err = cmd.Run()
 	elapsed := time.Since(start)

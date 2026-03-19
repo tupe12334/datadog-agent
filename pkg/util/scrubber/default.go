@@ -457,6 +457,16 @@ func ScrubJSONString(data string) (string, error) {
 	return string(res), nil
 }
 
+// ScrubJSONCompactString scrubs credentials from the given JSON string, preserving compact (minified) output,
+// using the default scrubber.
+func ScrubJSONCompactString(data string) (string, error) {
+	res, err := DefaultScrubber.ScrubJSONCompact([]byte(data))
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
+}
+
 // ScrubString scrubs credentials from the given string, using the default scrubber.
 func ScrubString(data string) (string, error) {
 	res, err := DefaultScrubber.ScrubBytes([]byte(data))

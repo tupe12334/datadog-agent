@@ -425,6 +425,81 @@ func TestComplexJSONWithNewKeys(t *testing.T) {
 	}
 }
 
+func TestScrubJSONCompact(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			// mirrors TestSecretBackendCredentials using the same credential keys
+			name: "secret backend credentials are scrubbed",
+			input: `{"secret_backend_config":{"session":{` +
+				`"azure_client_secret":"my-sp-secret",` +
+				`"azure_client_certificate_password":"my-cert-password",` +
+				`"aws_secret_access_key":"AKIAIOSFODNN7EXAMPLE",` +
+				`"vault_secret_id":"my-vault-secret-id",` +
+				`"vault_password":"my-vault-password",` +
+				`"vault_ldap_password":"my-ldap-password",` +
+				`"vault_token":"s.my-vault-token",` +
+				`"vault_kubernetes_jwt":"eyJhbGciOiJSUzI1NiJ9",` +
+				`"akeyless_access_key":"my-akeyless-key"}}}`,
+			expected: `{"secret_backend_config":{"session":{` +
+				`"azure_client_secret":"********",` +
+				`"azure_client_certificate_password":"********",` +
+				`"aws_secret_access_key":"********",` +
+				`"vault_secret_id":"********",` +
+				`"vault_password":"********",` +
+				`"vault_ldap_password":"********",` +
+				`"vault_token":"********",` +
+				`"vault_kubernetes_jwt":"********",` +
+				`"akeyless_access_key":"********"}}}`,
+		},
+		{
+			name:     "no sensitive keys left unchanged",
+			input:    `{"host":"localhost","port":5432}`,
+			expected: `{"host":"localhost","port":5432}`,
+		},
+		{
+			name:     "pretty-printed input is compacted in output",
+			input:    "{\n  \"password\": \"secret\",\n  \"username\": \"user1\"\n}",
+			expected: `{"password":"********","username":"user1"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := DefaultScrubber.ScrubJSONCompact([]byte(tc.input))
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(actual))
+			// Verify output contains no newlines or indentation (is compact)
+			require.NotContains(t, string(actual), "\n")
+			require.NotContains(t, string(actual), "  ")
+		})
+	}
+
+	t.Run("malformed input falls back to text scrubber", func(t *testing.T) {
+		s := New()
+		s.AddReplacer(SingleLine, Replacer{
+			Regex: regexp.MustCompile("foo"),
+			Repl:  []byte("bar"),
+		})
+		input := `{"foo": "bar", "baz"}`
+		actual, err := s.ScrubJSONCompact([]byte(input))
+		require.NoError(t, err)
+		require.Equal(t, `{"bar": "bar", "baz"}`, string(actual))
+	})
+}
+
+func TestScrubJSONCompactString(t *testing.T) {
+	input := `{"password":"topsecret","host":"localhost"}`
+	result, err := ScrubJSONCompactString(input)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"password":"********","host":"localhost"}`, result)
+	require.NotContains(t, result, "\n")
+	require.NotContains(t, result, "  ")
+}
+
 func TestJSONStringScrubbingWithNewKeys(t *testing.T) {
 	testCases := []struct {
 		name     string

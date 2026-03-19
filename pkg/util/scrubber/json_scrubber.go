@@ -31,3 +31,20 @@ func (c *Scrubber) ScrubJSON(input []byte) ([]byte, error) {
 	}
 	return c.ScrubBytes(input)
 }
+
+// ScrubJSONCompact scrubs credentials from the given json, preserving compact (minified) output.
+func (c *Scrubber) ScrubJSONCompact(input []byte) ([]byte, error) {
+	var data *interface{}
+	err := json.Unmarshal(input, &data)
+
+	if len(input) != 0 && err == nil {
+		c.ScrubDataObj(data)
+
+		newInput, err := json.Marshal(data)
+		if err == nil {
+			return newInput, nil
+		}
+		fmt.Fprintf(os.Stderr, "error scrubbing json, falling back on text scrubber: %s\n", err)
+	}
+	return c.ScrubBytes(input)
+}
