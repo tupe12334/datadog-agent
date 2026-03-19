@@ -2155,24 +2155,24 @@ func logsagent(config pkgconfigmodel.Setup) {
 
 	// Adaptive sampler (experimental) — rate-limits repetitive log patterns per source.
 	// Disabled by default; opt-in by setting enabled: true.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.enabled", false)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.enabled", false)
 	// max_patterns: maximum number of distinct log patterns tracked per source.
 	// When the table is full, the least-frequently-matched pattern is evicted.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.max_patterns", 1000)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.max_patterns", 1000)
 	// rate_limit: steady-state number of logs per second allowed per matching pattern.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.rate_limit", 10.0)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.rate_limit", 1)
 	// burst_size: maximum log credits a pattern can accumulate.
 	// New or returning patterns can emit up to burst_size logs before being rate-limited.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.burst_size", 1000.0)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.burst_size", 1000.0)
 	// match_threshold: fraction of tokens [0, 1] that must match for two logs to be
 	// considered the same pattern. Lower values are more aggressive at grouping logs.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.match_threshold", 0.9)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.match_threshold", 0.9)
 	// tokenizer_max_input_bytes: number of bytes of each log line inspected by the tokenizer
 	// when the adaptive sampler is active. The sampler needs more context than the auto-multiline
 	// labeler (which defaults to 60) to reliably distinguish patterns. When the sampler is enabled,
 	// the tokenizer window is set to the larger of this value and
 	// logs_config.auto_multi_line.tokenizer_max_input_bytes.
-	config.BindEnvAndSetDefault("logs_adaptive_sampler_EXPERIMENTAL.tokenizer_max_input_bytes", 256)
+	config.BindEnvAndSetDefault("logs_config.experimental_adaptive_sampling.tokenizer_max_input_bytes", 2048)
 }
 
 // vector integration
