@@ -420,14 +420,18 @@ func (r *secretResolver) SubscribeToChanges(cb secrets.SecretChangeCallback) {
 func (r *secretResolver) shouldResolvedSecret(handle string, origin string, imageName string, kubeNamespace string) bool {
 	var secretNamespace string
 
+	// Strip the backendID:: prefix (e.g. "prodk8s::") before parsing namespace formats
+	// so that ENC[prodk8s::namespace1/secret;key] correctly extracts "namespace1".
+	_, secretKey := splitSecretHandle(handle)
+
 	// format: k8s_secret@namespace/secret-name/key
-	if secretName, found := strings.CutPrefix(handle, "k8s_secret@"); found && kubeNamespace != "" {
+	if secretName, found := strings.CutPrefix(secretKey, "k8s_secret@"); found && kubeNamespace != "" {
 		secretNamespace = strings.Split(secretName, "/")[0]
 	}
 
 	// format: namespace/secret-name;key
 	if secretNamespace == "" && kubeNamespace != "" {
-		if parts := strings.SplitN(handle, ";", 2); len(parts) == 2 {
+		if parts := strings.SplitN(secretKey, ";", 2); len(parts) == 2 {
 			secretNamespace = strings.SplitN(parts[0], "/", 2)[0]
 		}
 	}
