@@ -25,9 +25,9 @@ var embeddedSecretFileJSON string
 
 // TestMultiBackend verifies that extra_secret_backends routes handles to the correct
 // backend when multiple backends are configured simultaneously.
-// - api_key uses the default AWS backend (secret_backend_type/secret_backend_config),
-//   testing backward compatibility with no "::" prefix in the handle.
-// - additional_endpoints keys are resolved via extra_secret_backends:
+//   - api_key uses the default AWS backend (secret_backend_type/secret_backend_config),
+//     testing backward compatibility with no "::" prefix in the handle.
+//   - additional_endpoints keys are resolved via extra_secret_backends:
 //   - "yaml" backend (file.yaml) for ENC[yaml::fake_yaml_key]
 //   - "json" backend (file.json) for ENC[json::fake_json_key]
 func (v *linuxRuntimeSecretSuite) TestMultiBackend() {
