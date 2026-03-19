@@ -56,8 +56,13 @@ if not exist "!more_than_260_chars!" (
 
 set "bazel_args=%*"
 if defined bazel_args if defined CI if not defined GITHUB_ACTIONS (
-  :: In CI except GitHub: "$@" -> "$1" --config=ci "${@:2}"
-  call set "bazel_args=%1 --config=ci%%bazel_args:*%1=%%"
+  set "cmd="
+  for %%i in (%*) do if not defined cmd (
+    set "arg=%%i"
+    if "!arg:~0,1!" neq "-" set "cmd=!arg!"
+  )
+  :: In CI except GitHub: "$@" -> "${@/$cmd/$cmd --config=ci}"
+  if defined cmd call set "bazel_args=%%bazel_args:!cmd! =!cmd! --config=ci %%"
 )
 "%BAZEL_REAL%" !bazel_home_startup_option! !bazel_args!
 exit /b !errorlevel!
