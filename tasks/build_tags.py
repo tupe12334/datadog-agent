@@ -41,6 +41,7 @@ ALL_TAGS = {
     "crio",
     # Opt out of the ASM build requirements of dd-trace-go
     "datadog.no_waf",
+    "dd_discovery_rust",  # used to enable the Rust-backed libdd_discovery implementation in system-probe
     "docker",
     "ec2",
     "etcd",
@@ -78,7 +79,6 @@ ALL_TAGS = {
     "zstd",
     "cel",
     "cws_instrumentation_injector_only",  # used for building cws-instrumentation with only the injector code
-    "dd_discovery_rust",  # used to enable the Rust-backed libdd_discovery implementation in system-probe
 }.union(COMMON_TAGS)
 
 ### Tag inclusion lists
