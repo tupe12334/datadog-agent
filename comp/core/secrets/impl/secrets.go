@@ -526,6 +526,7 @@ func (r *secretResolver) Resolve(data []byte, origin string, imageName string, k
 	}
 
 	// check if any new secrets need to be fetch
+	var resolveErr error
 	if len(newHandles) != 0 {
 		var secretResponse map[string]string
 		var handleErrors map[string]error
@@ -546,7 +547,7 @@ func (r *secretResolver) Resolve(data []byte, origin string, imageName string, k
 			for handle, herr := range handleErrors {
 				r.unresolvedSecrets[fmt.Sprintf("'%s' from %s: %s", handle, origin, herr)] = struct{}{}
 			}
-			return nil, fmt.Errorf("could not resolve %d secret handle(s), see 'agent secret' for details", len(handleErrors))
+			resolveErr = fmt.Errorf("could not resolve %d secret handle(s), see 'agent secret' for details", len(handleErrors))
 		}
 
 		w.Resolver = func(path []string, value string) (string, error) {
@@ -562,9 +563,9 @@ func (r *secretResolver) Resolve(data []byte, origin string, imageName string, k
 					return secretValue, nil
 				}
 
-				// This should never happen since fetchSecret will return an error if not every handle have
-				// been fetched.
-				return "", fmt.Errorf("unknown secret '%s'", handle)
+				// Handle failed to resolve — leave the ENC[] value as-is so that
+				// successfully resolved handles in the same config are still substituted.
+				return value, nil
 			}
 			return value, nil
 		}
@@ -582,7 +583,7 @@ func (r *secretResolver) Resolve(data []byte, origin string, imageName string, k
 	if err != nil {
 		return nil, fmt.Errorf("could not Marshal config after replacing encrypted secrets: %s", err)
 	}
-	return finalConfig, nil
+	return finalConfig, resolveErr
 }
 
 // Secret Refresh Notifications
