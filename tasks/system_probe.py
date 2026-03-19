@@ -1439,7 +1439,9 @@ def build_rust_libs(ctx: Context, arch: Arch):
         platform_flag = f"--platforms={platform_map[arch.kmt_arch]}"
 
     for source_path in RUST_LIBS:
-        ctx.run(f"bazelisk run --config=release {platform_flag} -- @//{source_path}:install_libs --destdir={Path(source_path)}")
+        ctx.run(
+            f"bazelisk run --config=release {platform_flag} -- @//{source_path}:install_libs --destdir={Path(source_path)}"
+        )
 
 
 _BAZEL_CWS_BALOUM_TARGETS = {
