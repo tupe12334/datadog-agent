@@ -375,6 +375,54 @@ func TestDeviceDeduper_AddPendingDevice(t *testing.T) {
 	assert.Equal(t, pendingDevice3, deduper.pendingDevices[1])
 }
 
+func TestDeviceDeduper_AddPendingDevice_FromCache(t *testing.T) {
+	now := time.Now().UnixMilli()
+	deviceInfo := DeviceInfo{
+		Name:        "device1",
+		Description: "test device",
+		BootTimeMs:  now,
+		SysObjectID: "1.3.6.1.4.1.9.1.1",
+	}
+	cachedDevice := PendingDevice{
+		Config: snmp.Config{
+			Network: "192.168.1.0/30",
+			Authentications: []snmp.Authentication{
+				{Community: "public"},
+			},
+		},
+		Info:       deviceInfo,
+		AuthIndex:  0,
+		WriteCache: false,
+		IP:         "192.168.1.2",
+	}
+
+	deduper := &deviceDeduperImpl{
+		deviceInfos:    make([]DeviceInfo, 0),
+		pendingDevices: make([]PendingDevice, 0),
+		ipsCounter:     make(map[string]*atomic.Uint32),
+	}
+
+	deduper.AddPendingDevice(cachedDevice)
+
+	// Cache devices must not enter the pending queue — they are re-scheduled immediately
+	assert.Len(t, deduper.pendingDevices, 0)
+	// The device info must be recorded so a subsequent scan for the same physical device is deduplicated
+	assert.Len(t, deduper.deviceInfos, 1)
+	assert.Equal(t, deviceInfo, deduper.deviceInfos[0])
+
+	// A later scan discovering the same device (WriteCache: true) must be rejected as already known
+	scannedDevice := PendingDevice{
+		Config:     cachedDevice.Config,
+		Info:       deviceInfo,
+		AuthIndex:  0,
+		WriteCache: true,
+		IP:         "192.168.1.3",
+	}
+	deduper.AddPendingDevice(scannedDevice)
+	assert.Len(t, deduper.pendingDevices, 0)
+	assert.Len(t, deduper.deviceInfos, 1)
+}
+
 func TestDeviceDeduper_GetDedupedDevices(t *testing.T) {
 	deduper := &deviceDeduperImpl{
 		deviceInfos:    make([]DeviceInfo, 0),

@@ -511,6 +511,10 @@ func (l *SNMPListener) createService(
 		return
 	}
 
+	if !writeCache {
+		l.registerService(pendingDevice)
+	}
+
 	l.deviceDeduper.AddPendingDevice(pendingDevice)
 }
 

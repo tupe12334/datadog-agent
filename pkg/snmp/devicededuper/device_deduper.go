@@ -130,6 +130,12 @@ func (d *deviceDeduperImpl) AddPendingDevice(device PendingDevice) {
 	d.Lock()
 	defer d.Unlock()
 
+	if !device.WriteCache {
+		log.Debugf("Device %s already in cache", device.IP)
+		d.deviceInfos = append(d.deviceInfos, device.Info)
+		return
+	}
+
 	if d.contains(device.Info) {
 		log.Debugf("Device %s already discovered", device.IP)
 		return
